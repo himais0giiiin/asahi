@@ -10,6 +10,7 @@
 #import "YZStrings.h"
 #import "YZTheme.h"
 #include "yozora_core.h"
+#include "webgl/yozora_gl.h"
 
 // the core thread reports a download that ended or paused, the delegate hears of it on the main thread
 static void YZDownloadObserver(unsigned identifier, int state, void *context);
@@ -107,12 +108,20 @@ static void YZDownloadObserver(unsigned identifier, int state, void *context);
     [YZCrash applicationDidEnterBackground];
     [_browser saveTabsAndWait];
     [self flushCachesInBackground:application];
-    // pages do not run while the app is hidden, the thread resumes with the app. queued work, the flush above included, still runs
+    // pages do not run while the app is hidden, the thread resumes with the app. queued work, the flush above included, still runs,
+    // except behind a page that waits at the gl gate below until the app is back
     yozora_set_background(1);
     [self keepDownloadsRunning];
+    // last: the system takes the graphics chip back soon after this returns (on ios 9 with an a5 from 1.5 s for
+    // home and from 0.35 s for a lock, the app then ends in gpusSubmitDataBuffers under a webgl call) and the
+    // core thread can still be in a script that draws. from here its gl calls wait for the return
+    if (!yozora_gl_set_allowed(0))
+        NSLog(@"yozora: a gl call was still in the driver a second after the gl gate shut");
 }
 - (void)applicationWillEnterForeground:(UIApplication *)application {
     (void)application;
+    // the graphics chip is the app's again before the core thread may run a page
+    yozora_gl_set_allowed(1);
     [YZCrash applicationWillEnterForeground];
     [self endBackgroundTask];
     yozora_set_background(0);

@@ -11,7 +11,9 @@ add_custom_command(
         "${YOZORA_ANGLE_DIR}/src/libGLESv2" "${YOZORA_WEBGL_DIR}/yozora_gles.cpp" "${yozora_gles_forward}"
     DEPENDS "${YOZORA_WEBGL_DIR}/make_gles_forward.py" "${YOZORA_WEBGL_DIR}/yozora_gles.cpp"
     VERBATIM)
-set(yozora_gles_sources "${YOZORA_WEBGL_DIR}/yozora_gles.cpp" "${YOZORA_WEBGL_DIR}/yozora_egl.cpp")
+set(yozora_gles_sources "${YOZORA_WEBGL_DIR}/yozora_gles.cpp" "${YOZORA_WEBGL_DIR}/yozora_egl.cpp" "${YOZORA_WEBGL_DIR}/yozora_gl_gate.c")
+# the gate is portable c99 with a host test (tests/test_gl_gate.c), built here as strictly as there
+set_source_files_properties("${YOZORA_WEBGL_DIR}/yozora_gl_gate.c" PROPERTIES COMPILE_OPTIONS "-std=c99;-Wall;-Wextra;-Werror;-pedantic")
 if (APPLE)
     list(APPEND yozora_gles_sources "${YOZORA_WEBGL_DIR}/yozora_gl_eagl.m")
     # manual reference counting, like the rest of the app

@@ -4,7 +4,7 @@
 
 `meow test` builds and runs the c tests and the python tests that need nothing from webkit. every c test builds with `-Wall -Wextra -Werror -pedantic`.
 
-- c: navigation, store, address, signin, accent, playlist, mp4 and ts, hls, log, blocklist, filter, sitegrants, budget, http cache, keys, motion, zoom, blur, divdc3, debug, transfer, translate, color, clock, wait, system, macho, memory bounds, render plan, scene animation, wasm engine
+- c: navigation, store, address, signin, accent, playlist, mp4 and ts, hls, log, blocklist, filter, sitegrants, budget, http cache, keys, motion, zoom, blur, divdc3, debug, transfer, translate, color, clock, wait, gl gate, system, macho, memory bounds, render plan, scene animation, wasm engine
 - python: sources, patches, scripts, the cli of the store and the runtime
 - the c tests run under asan and ubsan. `page-adapter-sanitize` stops in upstream wtf (`memcpy` with a null pointer and zero length) and in the css tokenizer vector, so no clean sanitizer run of the whole core is claimed
 - `meow test proxy` runs the stream proxy against local http and https servers: ranges, cookies, referers, redirects, hls chains, fragmented mp4 segments made transport streams, bad requests, a client that leaves, the stream limit, stop under load, chain and host name checks. needs libcurl and, for https, openssl

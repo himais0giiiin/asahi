@@ -2445,6 +2445,12 @@ cflags = ["-std=c99", "-Wall", "-Wextra", "-Werror", "-pedantic", "-O1", "-g", "
 libs = ["pthread"]
 sanitize = "address,undefined"
 
+[test.gl_gate]
+src = ["tests/test_gl_gate.c", "core/webgl/yozora_gl_gate.c"]
+cflags = ["-std=c99", "-Wall", "-Wextra", "-Werror", "-pedantic", "-O1", "-g", "-Icore/webgl"]
+libs = ["pthread"]
+sanitize = "address,undefined"
+
 [test.system]
 src = ["tests/test_system.c", "core/darwin/yozora_system.c"]
 cflags = ["-std=c99", "-Wall", "-Wextra", "-Werror", "-pedantic", "-O1", "-g", "-Icore/darwin"]

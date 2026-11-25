@@ -26,6 +26,11 @@ typedef struct yozora_gl_state {
 /* NULL when the thread has no current context */
 yozora_gl_state *yozora_gl_current_state(void);
 
+/* around each call of this layer into the driver, so that it waits while the gate of yozora_gl_gate.c is shut.
+   calls nest on a thread and only the outermost one waits */
+void yozora_gl_enter(void);
+void yozora_gl_leave(void);
+
 #ifdef __cplusplus
 }
 #endif

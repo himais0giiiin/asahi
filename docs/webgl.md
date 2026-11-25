@@ -19,6 +19,12 @@ webkit keeps its own context code, written against angle. angle itself is not bu
 
 a native layer costs three buffers of the size of the canvas (the swap chain of Core Animation). a canvas of 2048 by 2048 holds 48 MB of them. `renderInContext` does not draw the layer, so a preview made that way shows the canvas empty.
 
+## the background
+
+ios ends an app that hands the graphics chip work while it is in the background: the process dies in the driver at its next submission, with `gpusSubmitDataBuffers` on top of the crash record. measured on ios 9 with an a5: from 1.5 to 1.65 s after `applicationDidEnterBackground` returned after the home button, from 0.35 s after a lock. the core thread can still draw then. its pause waits for the script that runs and the tasks queued before it, and while downloads go on in the background it runs page timers.
+
+so the gl layer has a gate (`core/webgl/yozora_gl_gate.c`). every call of the layer into the driver passes it: the forwarded entry points, the ones written by hand, and the context and canvas layer calls of `yozora_gl_eagl.m`. the app shuts it as the last thing in `applicationDidEnterBackground` with `yozora_gl_set_allowed(0)`, which returns once no call that began before is still in the driver, or after a second, and opens it first in `applicationWillEnterForeground`. a call made while it is shut waits on its thread and goes on when the app is back, so the page keeps its webgl state: a call that was skipped would leave it wrong. the calls of one thread nest and only the outermost one waits. a page that stopped drawing by itself is never held, a page in the middle of a frame as the app leaves is held like a script that runs on. the core thread then holds what is queued behind it until the app is back: the writes of local storage and of the bytecode cache that `applicationDidEnterBackground` asks for and, in the quiet run of [downloads](downloads.md), the transfers. the host never shuts the gate.
+
 ## what a driver does not do
 
 angle checked these, the driver does not, and a page that breaks a rule gets what the driver does with it:
@@ -38,6 +44,7 @@ webgl in a video texture is not done.
 ## tests
 
 - `tests/test_gles_shim.cpp`: the entry points on a host driver
+- `tests/test_gl_gate.c`: the shutting waits for a call that is in the driver and gives up after a second, a shut gate holds every call of one thread or of several, nested ones too, until it opens, the held threads go on, a leave without an enter keeps the count
 - `tests/test_core_webgl.py`: a page of webgl 1 and of webgl 2 drawn and read back, and the canvas in the picture of the page
 - `tests/test_scene_raster.cpp` (`testCanvasSurface`): a native canvas layer reaches the scene with its rectangle and no tile, and the scene keeps the surface alive after the recording is gone
 - `tests/test_core_webgl_option.py`: the option of the core

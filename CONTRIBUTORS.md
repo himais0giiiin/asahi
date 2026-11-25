@@ -93,7 +93,8 @@ from a display link on the interface thread:
 ### app lifecycle
 
 - `applicationDidEnterBackground`: `yozora_set_background(1)`, and flush on a background task: `yozora_flush_http_cache`, `yozora_flush_bytecode_cache`, `yozora_flush_site_data`. flushes wait for the core thread, which may be inside a script, so never on the main thread of an ios 5 or 6 app (the system kills it for taking too long)
-- foreground: `yozora_set_background(0)`
+- `applicationDidEnterBackground`, last: `yozora_gl_set_allowed(0)` (`core/webgl/yozora_gl.h`). ios kills a hidden app at its next submission to the graphics chip, on ios 9 from 0.35 s after a lock, and the core thread can still be drawing, so from here its webgl calls wait for the return. it waits up to a second for a call that is in the driver
+- foreground: `yozora_gl_set_allowed(1)` first, then `yozora_set_background(0)`
 - memory warning: `yozora_core_release_memory(core)` for each core, `yozora_release_memory_async()` for the process. forms, indexeddb, cookies and history are never dropped to free memory
 - a script that holds the thread is offered to be stopped: ask `yozora_stop_scripts` from any thread when your interface decides it. nothing ends a script on its own timer
 - destroy a core with `yozora_core_destroy_async` when you will not touch it again, `yozora_core_destroy` waits

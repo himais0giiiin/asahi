@@ -2,7 +2,8 @@
 """writes yozora_gles_forward.inc: one GL_* entry point of ANGLE for every declaration in the ES 2.0, 3.0 and extension headers that
 yozora_gles.cpp does not define by hand. each entry calls the function of the system driver with the same name minus the prefix (glFoo for
 GL_Foo), found once with yozora_gl_proc. a function the driver does not have raises INVALID_OPERATION and returns zero, which is what a context
-without the extension does for a call that WebGL never makes, since the extension is not advertised"""
+without the extension does for a call that WebGL never makes, since the extension is not advertised. the call into the driver and the error
+check of YOZORA_GL_TRACE pass the gate of yozora_gl_gate.c, so they wait while the app is in the background"""
 import re
 import sys
 from pathlib import Path
@@ -70,12 +71,16 @@ def main():
             lines.append(f"        function = reinterpret_cast<Function>(yozora_gl_proc_any({list_text}));")
             if returns == "void":
                 lines.append("    if (!function) { yozora_gl_raise(GL_INVALID_OPERATION); return; }")
+                lines.append("    yozora_gl_enter();")
                 lines.append(f"    function({arguments});")
                 lines.append(f'    yozora_gl_trace("{function}");')
+                lines.append("    yozora_gl_leave();")
             else:
                 lines.append("    if (!function) { yozora_gl_raise(GL_INVALID_OPERATION); return {}; }")
+                lines.append("    yozora_gl_enter();")
                 lines.append(f"    auto result = function({arguments});")
                 lines.append(f'    yozora_gl_trace("{function}");')
+                lines.append("    yozora_gl_leave();")
                 lines.append("    return result;")
             lines.append("}")
     output.write_text("\n".join(lines) + "\n")

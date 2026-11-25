@@ -26,6 +26,14 @@ void yozora_gl_context_destroy(yozora_gl_context *context);
 /* the address of a driver function of the current context, NULL when the driver has none */
 void *yozora_gl_proc(const char *name);
 
+/* the system ends an app that hands the graphics chip work while it is in the background (ios 9 on an a5: from
+   1.5 s after applicationDidEnterBackground returned for home, from 0.35 s for a lock). 0 shuts the gate of
+   yozora_gl_gate.c: from then on each call of this layer into the driver waits on the thread that made it until
+   1 opens the gate again, so a page that was still drawing goes on where it was when the app is back. 0 returns
+   nonzero once no call that began before it is still in the driver, 0 when one was still there after a second.
+   the interface thread calls it (app/app_main.m), never from inside a call of this layer */
+int yozora_gl_set_allowed(int allowed);
+
 /* a native layer of width by height pixels that shows frames of a texture of `page` with no read back. all
    of these run on the thread that owns `page`, except the retain and release of the canvas, which any thread
    may call. NULL when the system has no such layer (the host) or the driver refuses it, the caller then reads

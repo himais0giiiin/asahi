@@ -44,7 +44,7 @@ yozora_gl_state *yozora_gl_current_state(void)
     return current ? &current->state : NULL;
 }
 
-yozora_gl_context *yozora_gl_context_create(int version)
+static yozora_gl_context *context_create(int version)
 {
     if (version != 2 && version != 3)
         return NULL;
@@ -64,12 +64,20 @@ yozora_gl_context *yozora_gl_context_create(int version)
     return context;
 }
 
+yozora_gl_context *yozora_gl_context_create(int version)
+{
+    yozora_gl_enter();
+    yozora_gl_context *context = context_create(version);
+    yozora_gl_leave();
+    return context;
+}
+
 int yozora_gl_context_version(const yozora_gl_context *context)
 {
     return context ? context->state.version : 0;
 }
 
-int yozora_gl_context_make_current(yozora_gl_context *context)
+static int context_make_current(yozora_gl_context *context)
 {
     if (!context)
         return 0;
@@ -81,21 +89,44 @@ int yozora_gl_context_make_current(yozora_gl_context *context)
     return 1;
 }
 
-void yozora_gl_context_release_thread(void)
+/* a switch of the current context flushes the one before into the driver, so it waits at a shut gate like a draw */
+int yozora_gl_context_make_current(yozora_gl_context *context)
+{
+    yozora_gl_enter();
+    int made = context_make_current(context);
+    yozora_gl_leave();
+    return made;
+}
+
+static void context_release_thread(void)
 {
     [EAGLContext setCurrentContext:nil];
     set_current(NULL);
 }
 
-void yozora_gl_context_destroy(yozora_gl_context *context)
+void yozora_gl_context_release_thread(void)
+{
+    yozora_gl_enter();
+    context_release_thread();
+    yozora_gl_leave();
+}
+
+static void context_destroy(yozora_gl_context *context)
 {
     if (!context)
         return;
     if (get_current() == context)
-        yozora_gl_context_release_thread();
+        context_release_thread();
     [context->context release];
     free(context->state.extensions);
     free(context);
+}
+
+void yozora_gl_context_destroy(yozora_gl_context *context)
+{
+    yozora_gl_enter();
+    context_destroy(context);
+    yozora_gl_leave();
 }
 
 void *yozora_gl_proc(const char *name)
@@ -200,7 +231,7 @@ static void surface_delete_objects(yozora_gl_surface *surface)
     surface->program = surface->buffer = surface->framebuffer = surface->renderbuffer = 0;
 }
 
-yozora_gl_surface *yozora_gl_surface_create(yozora_gl_context *page, unsigned width, unsigned height, int opaque, int premultiplied)
+static yozora_gl_surface *surface_create(yozora_gl_context *page, unsigned width, unsigned height, int opaque, int premultiplied)
 {
     if (!page || !width || !height)
         return NULL;
@@ -270,12 +301,20 @@ yozora_gl_surface *yozora_gl_surface_create(yozora_gl_context *page, unsigned wi
     return surface;
 }
 
+yozora_gl_surface *yozora_gl_surface_create(yozora_gl_context *page, unsigned width, unsigned height, int opaque, int premultiplied)
+{
+    yozora_gl_enter();
+    yozora_gl_surface *surface = surface_create(page, width, height, opaque, premultiplied);
+    yozora_gl_leave();
+    return surface;
+}
+
 yozora_canvas *yozora_gl_surface_canvas(yozora_gl_surface *surface)
 {
     return surface ? &surface->canvas : NULL;
 }
 
-int yozora_gl_surface_present(yozora_gl_surface *surface, unsigned texture)
+static int surface_present(yozora_gl_surface *surface, unsigned texture)
 {
     if (!surface || !surface->context || !texture)
         return 0;
@@ -295,7 +334,15 @@ int yozora_gl_surface_present(yozora_gl_surface *surface, unsigned texture)
     return shown;
 }
 
-void yozora_gl_surface_close(yozora_gl_surface *surface)
+int yozora_gl_surface_present(yozora_gl_surface *surface, unsigned texture)
+{
+    yozora_gl_enter();
+    int shown = surface_present(surface, texture);
+    yozora_gl_leave();
+    return shown;
+}
+
+static void surface_close(yozora_gl_surface *surface)
 {
     if (!surface || !surface->context)
         return;
@@ -305,4 +352,11 @@ void yozora_gl_surface_close(yozora_gl_surface *surface)
     [EAGLContext setCurrentContext:previous];
     [surface->context release];
     surface->context = nil;
+}
+
+void yozora_gl_surface_close(yozora_gl_surface *surface)
+{
+    yozora_gl_enter();
+    surface_close(surface);
+    yozora_gl_leave();
 }

@@ -23,7 +23,7 @@ a paused download keeps its part file and counts as unfinished. a resume sends `
 
 ## the app is hidden
 
-downloads go on: `applicationDidEnterBackground` takes a background task (the system gives a hidden app a few minutes, ten on ios 5 and 6) and `yozora_set_background_downloads(1)` lets the core thread run in a quiet mode: pages hidden, no passes, the run loop serves the transfers. when the last download ends the thread holds still again. when the time runs out the downloads that still run are paused with their part files kept and they resume when the app is shown.
+downloads go on: `applicationDidEnterBackground` takes a background task (the system gives a hidden app a few minutes, ten on ios 5 and 6) and `yozora_set_background_downloads(1)` lets the core thread run in a quiet mode: pages hidden, no passes, the run loop serves the transfers. a page that draws with webgl as the app leaves or in that run waits at the gate of the gl layer until the app is back (see [webgl](webgl.md)), and the transfers wait with the thread. when the last download ends the thread holds still again. when the time runs out the downloads that still run are paused with their part files kept and they resume when the app is shown.
 
 ## the system tells
 

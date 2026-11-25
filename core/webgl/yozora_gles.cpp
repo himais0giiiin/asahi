@@ -77,6 +77,15 @@ Function native(const char* name)
     return reinterpret_cast<Function>(yozora_gl_proc(name));
 }
 
+// a hand written entry point passes the gate of yozora_gl_gate.c once around all of its driver calls, so a
+// shut gate holds it before the first one and never between two
+struct GateScope {
+    GateScope() { yozora_gl_enter(); }
+    ~GateScope() { yozora_gl_leave(); }
+    GateScope(const GateScope&) = delete;
+    GateScope& operator=(const GateScope&) = delete;
+};
+
 // YOZORA_GL_TRACE=1 names every forwarded call that left a driver error. it reads the error, so the page
 // never sees it: a tool for finding which call a driver refuses, not a mode to run a page in
 void trace(const char* name)
@@ -251,6 +260,7 @@ extern "C" {
 
 ANGLE_EXPORT GLenum GL_APIENTRY GL_GetError()
 {
+    GateScope gate;
     auto* state = yozora_gl_current_state();
     if (state && state->pending_error) {
         GLenum error = state->pending_error;
@@ -263,6 +273,7 @@ ANGLE_EXPORT GLenum GL_APIENTRY GL_GetError()
 
 ANGLE_EXPORT const GLubyte *GL_APIENTRY GL_GetString(GLenum name)
 {
+    GateScope gate;
     auto* state = yozora_gl_current_state();
     if (name == GL_EXTENSIONS && state)
         return reinterpret_cast<const GLubyte*>(extensionsOf(*state));
@@ -279,6 +290,7 @@ ANGLE_EXPORT const GLubyte *GL_APIENTRY GL_GetString(GLenum name)
 // the page would read as its own error
 ANGLE_EXPORT void GL_APIENTRY GL_Enable(GLenum cap)
 {
+    GateScope gate;
     if (cap == kDebugOutput || cap == kDebugOutputSynchronous || cap == kTextureRectangle)
         return;
     auto function = native<void (GL_APIENTRY*)(GLenum)>("glEnable");
@@ -288,6 +300,7 @@ ANGLE_EXPORT void GL_APIENTRY GL_Enable(GLenum cap)
 
 ANGLE_EXPORT void GL_APIENTRY GL_Disable(GLenum cap)
 {
+    GateScope gate;
     if (cap == kDebugOutput || cap == kDebugOutputSynchronous || cap == kTextureRectangle)
         return;
     auto function = native<void (GL_APIENTRY*)(GLenum)>("glDisable");
@@ -297,6 +310,7 @@ ANGLE_EXPORT void GL_APIENTRY GL_Disable(GLenum cap)
 
 ANGLE_EXPORT GLboolean GL_APIENTRY GL_IsEnabled(GLenum cap)
 {
+    GateScope gate;
     if (cap == kDebugOutput || cap == kDebugOutputSynchronous || cap == kTextureRectangle)
         return GL_TRUE;
     auto function = native<GLboolean (GL_APIENTRY*)(GLenum)>("glIsEnabled");
@@ -319,6 +333,7 @@ ANGLE_EXPORT void GL_APIENTRY GL_RequestExtensionANGLE(const GLchar*)
 // the driver compiles the source of WebGL as it is, so the translated source is the source
 ANGLE_EXPORT void GL_APIENTRY GL_GetTranslatedShaderSourceANGLE(GLuint shader, GLsizei bufSize, GLsizei* length, GLchar* source)
 {
+    GateScope gate;
     auto function = native<void (GL_APIENTRY*)(GLuint, GLsizei, GLsizei*, GLchar*)>("glGetShaderSource");
     if (!function) {
         raise(GL_INVALID_OPERATION);
@@ -330,6 +345,7 @@ ANGLE_EXPORT void GL_APIENTRY GL_GetTranslatedShaderSourceANGLE(GLuint shader, G
 
 ANGLE_EXPORT void GL_APIENTRY GL_GetShaderivRobustANGLE(GLuint shader, GLenum pname, GLsizei, GLsizei* length, GLint* params)
 {
+    GateScope gate;
     auto function = native<void (GL_APIENTRY*)(GLuint, GLenum, GLint*)>("glGetShaderiv");
     if (!function) {
         raise(GL_INVALID_OPERATION);
@@ -343,6 +359,7 @@ ANGLE_EXPORT void GL_APIENTRY GL_GetShaderivRobustANGLE(GLuint shader, GLenum pn
 
 ANGLE_EXPORT void GL_APIENTRY GL_PixelStorei(GLenum pname, GLint param)
 {
+    GateScope gate;
     auto* state = yozora_gl_current_state();
     if (state) {
         if (pname == kPackReverseRowOrder) {
@@ -367,6 +384,7 @@ ANGLE_EXPORT void GL_APIENTRY GL_PixelStorei(GLenum pname, GLint param)
 
 ANGLE_EXPORT void GL_APIENTRY GL_ReadPixelsRobustANGLE(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLsizei bufSize, GLsizei* length, GLsizei* columns, GLsizei* rows, void* pixels)
 {
+    GateScope gate;
     auto read = native<void (GL_APIENTRY*)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void*)>("glReadPixels");
     auto* state = yozora_gl_current_state();
     if (!read || !state) {
@@ -415,6 +433,7 @@ ANGLE_EXPORT void GL_APIENTRY GL_ReadPixelsRobustANGLE(GLint x, GLint y, GLsizei
 // WebGL requires new storage to read as zero, and a driver gives whatever the memory held before
 ANGLE_EXPORT void GL_APIENTRY GL_BufferData(GLenum target, GLsizeiptr size, const void* data, GLenum usage)
 {
+    GateScope gate;
     auto function = native<void (GL_APIENTRY*)(GLenum, GLsizeiptr, const void*, GLenum)>("glBufferData");
     if (!function) {
         raise(GL_INVALID_OPERATION);
@@ -465,6 +484,7 @@ extern "C" {
 
 ANGLE_EXPORT void GL_APIENTRY GL_TexImage2DRobustANGLE(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, GLsizei bufSize, const void* pixels)
 {
+    GateScope gate;
     auto function = native<void (GL_APIENTRY*)(GLenum, GLint, GLint, GLsizei, GLsizei, GLint, GLenum, GLenum, const void*)>("glTexImage2D");
     auto* state = yozora_gl_current_state();
     if (!function || !state) {
@@ -483,6 +503,7 @@ ANGLE_EXPORT void GL_APIENTRY GL_TexImage2DRobustANGLE(GLenum target, GLint leve
 
 ANGLE_EXPORT void GL_APIENTRY GL_TexImage3DRobustANGLE(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLenum format, GLenum type, GLsizei bufSize, const void* pixels)
 {
+    GateScope gate;
     auto function = native<void (GL_APIENTRY*)(GLenum, GLint, GLint, GLsizei, GLsizei, GLsizei, GLint, GLenum, GLenum, const void*)>("glTexImage3D");
     auto* state = yozora_gl_current_state();
     if (!function || !state) {

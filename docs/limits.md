@@ -38,6 +38,7 @@ every number here is in the code, the file is named so it can be changed. a limi
 - 8 videos with a player at once (`YOZORA_MAX_VIDEOS`), 8 open requests and 32 queued messages of the media engine
 - a script that holds the core thread is offered to be stopped after 8 seconds, 4 after a memory warning
 - the parser keeps the thread at most 100 ms before it lets a pass, a tap or a timer through
+- a webgl call that is in the driver when the app goes to the background is waited for a second at most, the calls after it wait for the return (`core/webgl/yozora_gl_gate.c`)
 
 ## media
 

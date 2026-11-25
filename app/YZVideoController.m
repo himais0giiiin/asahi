@@ -135,6 +135,9 @@ static UILabel *YZToastLabel(void) {
     _mediaID = player.mediaID;
     _video = player.videoLayer != nil;
     _title = [title copy];
+    // ios 13 and newer present a screen as a card that leaves the top of the page showing (a phone with a notch
+    // shows it most), the player is the whole screen
+    self.modalPresentationStyle = UIModalPresentationFullScreen;
     return self;
 }
 
@@ -287,6 +290,10 @@ static UILabel *YZToastLabel(void) {
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
+    // once the player is shut the screen only slides away: the safe insets change while it leaves, and laying the
+    // controls out again inside the transition moved them sideways before they were gone
+    if (_shut)
+        return;
     CGRect bounds = self.view.bounds;
     CGFloat width = bounds.size.width, height = bounds.size.height;
     UIEdgeInsets safe = [self safeInsets];
@@ -684,10 +691,12 @@ static UILabel *YZToastLabel(void) {
         return;
     _chromeShown = shown;
     NSArray *groups = [NSArray arrayWithObjects:_top, _center, _bottom, nil];
+    // no scale on the way out: a group shrinks toward its middle, so the buttons at its right end slid to the left
+    // while the group faded. the bars only move away vertically, the middle group just fades
     CGAffineTransform away[3] = {
-        CGAffineTransformConcat(CGAffineTransformMakeScale(0.94f, 0.94f), CGAffineTransformMakeTranslation(0, -14)),
-        CGAffineTransformMakeScale(0.82f, 0.82f),
-        CGAffineTransformConcat(CGAffineTransformMakeScale(0.94f, 0.94f), CGAffineTransformMakeTranslation(0, 14))
+        CGAffineTransformMakeTranslation(0, -14),
+        CGAffineTransformIdentity,
+        CGAffineTransformMakeTranslation(0, 14)
     };
     NSUInteger token = ++_chromeToken;
     for (NSUInteger i = 0; i < 3; ++i) {

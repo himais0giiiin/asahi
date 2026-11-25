@@ -35,6 +35,7 @@ static NSUInteger YZSessionHolders;
     BOOL _observing;
     BOOL _layerObserving;
     BOOL _holdsSession;
+    BOOL _keepSession;
     BOOL _sentSize;
     BOOL _sentFrame;
     BOOL _displayEvents;
@@ -49,6 +50,7 @@ static NSUInteger YZSessionHolders;
 - (void)reportSize;
 - (void)failWithError:(NSError *)error;
 - (void)updateSession;
+- (BOOL)activateSession:(AVAudioSession *)session category:(NSString *)category;
 - (void)applyVolume;
 @end
 
@@ -127,6 +129,7 @@ static NSUInteger YZSessionHolders;
     [center addObserver:self selector:@selector(itemEnded:) name:AVPlayerItemDidPlayToEndTimeNotification object:_item];
     [center addObserver:self selector:@selector(itemFailed:) name:AVPlayerItemFailedToPlayToEndTimeNotification object:_item];
     [center addObserver:self selector:@selector(sessionInterrupted:) name:YZInterruptionName object:nil];
+    [center addObserver:self selector:@selector(appBecameActive:) name:UIApplicationDidBecomeActiveNotification object:nil];
     // the block does not retain the player, shutDown removes the observer before the player goes
     __block YZMediaPlayer *player = self;
     _timeToken = [[_player addPeriodicTimeObserverForInterval:CMTimeMakeWithSeconds(YZTimeStep, YZTimescale) queue:NULL
@@ -247,15 +250,19 @@ static NSUInteger YZSessionHolders;
 
 - (void)play {
     _wantPlaying = YES;
+    _keepSession = YES;
     _ended = NO;
+    BOOL held = _holdsSession;
     [self updateSession];
+    // a session kept through a pause may have been deactivated by the system while the app was away
+    if (held)
+        [self appBecameActive:nil];
     _player.rate = (float)_rate;
 }
 
 - (void)pause {
     _wantPlaying = NO;
     [_player pause];
-    [self updateSession];
 }
 
 - (void)seekTo:(double)seconds {
@@ -297,9 +304,12 @@ static NSUInteger YZSessionHolders;
     _item.audioMix = mix;
 }
 
-// without the playback category the silent switch mutes the sound of a video; a muted video leaves the audio of other apps alone
+// without the playback category the silent switch mutes the sound of a video; a muted video leaves the audio of other apps alone.
+// the session stays active through a pause: deactivating it on every pause and activating it on every play tore the
+// audio pipeline of the player down and up again under the resumed sound (crackle, a dropped start, silence until the
+// next pause). it is let go when the video ends, is interrupted, is muted or closed
 - (void)updateSession {
-    BOOL needed = _wantPlaying && !_muted && _volume > 0 && !_shut;
+    BOOL needed = _keepSession && !_muted && _volume > 0 && !_shut;
     if (needed == _holdsSession)
         return;
     // the ios 16 sdk binds these exports to AVFAudio instead of the AVFoundation present on ios 5 and 7
@@ -310,14 +320,40 @@ static NSUInteger YZSessionHolders;
         NSLog(@"yozora: playback audio session is unavailable");
         return;
     }
-    _holdsSession = needed;
     NSError *error = nil;
     if (needed) {
-        if (YZSessionHolders++ == 0 && !([session setCategory:*category error:&error] && [session setActive:YES error:&error]))
-            NSLog(@"yozora: audio session: %@", error);
-    } else if (--YZSessionHolders == 0) {
-        [session setActive:NO error:NULL];
+        // a player that failed to take the session does not hold it, so the next play asks again
+        if (![self activateSession:session category:*category])
+            return;
+        _holdsSession = YES;
+        ++YZSessionHolders;
+    } else {
+        _holdsSession = NO;
+        if (--YZSessionHolders == 0 && ![session setActive:NO error:&error] && error)
+            NSLog(@"yozora: audio session release: %@", error);
     }
+}
+
+// another app or a call can leave the session on a category that is silent for a video. the category is set only
+// when it differs: setting it again on a running session is a category change for the route, which the player hears
+- (BOOL)activateSession:(AVAudioSession *)session category:(NSString *)category {
+    NSError *error = nil;
+    if ((![[session category] isEqualToString:category] && ![session setCategory:category error:&error]) || ![session setActive:YES error:&error]) {
+        NSLog(@"yozora: audio session: %@", error);
+        return NO;
+    }
+    return YES;
+}
+
+// the system deactivates the session while the app is away or after a call, a player that holds it asks for it again
+- (void)appBecameActive:(NSNotification *)notification {
+    (void)notification;
+    if (_shut || !_holdsSession)
+        return;
+    Class sessionClass = NSClassFromString(@"AVAudioSession");
+    NSString *const *category = (NSString *const *)dlsym(RTLD_DEFAULT, "AVAudioSessionCategoryPlayback");
+    if ([sessionClass sharedInstance] && category && *category)
+        [self activateSession:[sessionClass sharedInstance] category:*category];
 }
 
 - (void)sessionInterrupted:(NSNotification *)notification {
@@ -328,8 +364,9 @@ static NSUInteger YZSessionHolders;
         _wantPlaying = NO;
         [_player pause];
         [self send:YOZORA_MEDIA_PAUSED value:0 extra:0];
-        [self updateSession];
     }
+    _keepSession = NO;
+    [self updateSession];
 }
 
 #pragma mark state
@@ -448,6 +485,7 @@ static NSUInteger YZSessionHolders;
         return;
     _ended = YES;
     _wantPlaying = NO;
+    _keepSession = NO;
     [self send:YOZORA_MEDIA_ENDED value:0 extra:0];
     [self updateSession];
 }

@@ -13,6 +13,7 @@
 
 a video plays on the page under a transparent hole the page paints, so what the page draws over it stays over it, and the page controls it with its own buttons or the controls of webcore.
 
+the playback audio session is taken at the first play and kept through pauses. it is released when the video ends, is interrupted, is muted or closed. releasing it on every pause tore the audio pipeline down under the resumed sound.
 ## full screen
 
 the full screen player (`YZVideoController`) opens only when the page asks: `webkitEnterFullscreen`, `requestFullscreen` of the video or of a container that holds one. closing it fires `fullscreenchange` and the video keeps playing on the page. `document.fullscreenEnabled` is on, any other element is refused with a `TypeError`.

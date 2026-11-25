@@ -22,11 +22,9 @@ SDK_V64 = "${YOZORA_SDK_V64:-${DEPS}/sdk/iPhoneOS-arm64.sdk}"
 # version of the headers the patched sdk was made from
 SDK_V64_VERSION = "${YOZORA_SDK_V64_VERSION:-16.5}"
 CRT_V7 = "${YOZORA_CRT_V7:-${SDK_V7}/usr/lib/crt1.3.1.o}"
-# the cmake tree of the webcore libraries: the jit build. a cmake tree does not move, so this is the tree configured under this path
-# (the older build/core/webcore-ios-jit was configured under another one and cannot be used). the steps pass it on to the script, which
-# builds only what ninja finds changed in it. the tree is tied to its source directory: after a WebKit update scripts/sync_core_source.py
-# brings that directory up to date and YOZORA_WEBKIT_SRC names it, so only the changed files are built again
-WEB = "${YOZORA_WEBCORE_IOS_BUILD:-${root}/build/core/webcore-ios-jit-fresh}"
+# the cmake tree of the webcore libraries (jit build, armv7 and arm64 in one directory) for webkitgtk-2.54.3. a cmake tree is tied to
+# the path of its sources, so a new WebKit version in a new directory means a new tree and a full build
+WEB = "${YOZORA_WEBCORE_IOS_BUILD:-${root}/build/core/webcore-ios-jit-2543}"
 ENTITLEMENTS = "tools/yozora-jit.entitlements"
 
 [slice.armv7]

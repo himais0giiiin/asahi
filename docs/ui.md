@@ -147,3 +147,4 @@ settings > general > Background picks a photo of the library (a popover on an ip
 ## about screen
 
 settings > About Yozora shows the sticker card, the name and version of the app, a line about it and the rows: GitHub, the Telegram channel, WebKit and the official testers. the WebKit row has no address, its second line is the version of the engine this build was made from (`YozoraWebKitVersion` of `Info.plist`, set from `core/source.json` and kept equal to it by `tests/test_core_source.py`; a missing key shows `?` and is logged). a row with an address opens it, the other two only show their text.
+the rows of the menu wrap to a second line: the blocker row ("Включить блокировщик на сайте") was cut to "Включить б...ик" on one line.

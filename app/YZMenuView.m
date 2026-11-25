@@ -61,7 +61,7 @@ static const CGFloat YZMenuPadding = 8;
     [_panel removeFromSuperview];
     [_panel release];
     CGFloat width = self.bounds.size.width, height = self.bounds.size.height;
-    CGFloat panelWidth = MIN(width - 24, (CGFloat)280);
+    CGFloat panelWidth = MIN(width - 24, (CGFloat)300);
     // the settings row is pinned under the list and the rest scrolls when room is short. a phone on its side
     // has little room, so the card keeps a margin to the top
     CGFloat room = _anchorsTop ? height - _topInset - 24 : height - _bottomInset - 56;
@@ -123,6 +123,10 @@ static const CGFloat YZMenuPadding = 8;
         [row setTitle:[titles objectAtIndex:i] forState:UIControlStateNormal];
         [row setTitleColor:[YZTheme textColor] forState:UIControlStateNormal];
         row.titleLabel.font = [YZTheme systemFontOfSize:16];
+        // a long title (the blocker row) wraps to a second line, one line cut it to "Включить б...ик". 0 is word wrap in both
+        // UILineBreakModeWordWrap and NSLineBreakByWordWrapping
+        row.titleLabel.numberOfLines = 2;
+        row.titleLabel.lineBreakMode = (NSLineBreakMode)0;
         [row addTarget:self action:@selector(itemPressed:) forControlEvents:UIControlEventTouchUpInside];
         [pinned ? footer : list addSubview:row];
     }

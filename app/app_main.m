@@ -96,7 +96,7 @@ static void YZDownloadObserver(unsigned identifier, int state, void *context);
         return [_browser openExternalURL:url];
     NSString *scheme = [[url scheme] lowercaseString];
     // a sign in request waits like a page does, the browser asks the person once it exists
-    if (![scheme isEqualToString:@"http"] && ![scheme isEqualToString:@"https"] && ![scheme isEqualToString:@"yozora-auth"])
+    if (![scheme isEqualToString:@"http"] && ![scheme isEqualToString:@"https"] && ![scheme isEqualToString:@"yozora-auth"] && ![scheme isEqualToString:@"yozora-app"])
         return NO;
     [_pendingURL release];
     _pendingURL = [url retain];

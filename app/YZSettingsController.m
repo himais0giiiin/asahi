@@ -1091,7 +1091,10 @@ static UIColor *YZMixColors(UIColor *first, UIColor *second, CGFloat t) {
     YZBarFill *_barFill;
     UIImageView *_hero;
     CGFloat _heroWidth;
+    void (^_openAddress)(NSString *);
 }
+// the settings screen answers with a tab of Yozora, so a link of this screen does not leave for Safari
+@property (nonatomic, copy) void (^openAddress)(NSString *address);
 @end
 
 // sections fold: the developer one starts folded, the choice is kept between visits. a section is told by its
@@ -2186,6 +2189,7 @@ static NSArray *YZEngineLogos(void) {
     }
     case YZRowAbout: {
         YZAboutController *about = [[YZAboutController alloc] init];
+        about.openAddress = ^(NSString *address) { [_settingsDelegate settingsController:self openAddress:address]; };
         [self.navigationController pushViewController:about animated:YES];
         [about release];
         break;
@@ -2819,6 +2823,8 @@ static NSArray *YZEngineLogos(void) {
 // the app screen: the sticker card, name, version from the bundle, a line about it and the links
 @implementation YZAboutController
 
+@synthesize openAddress = _openAddress;
+
 - (id)init {
     self = [super initWithStyle:UITableViewStylePlain];
     return self;
@@ -2829,6 +2835,7 @@ static NSArray *YZEngineLogos(void) {
     [_barFill removeFromSuperview];
     [_barFill release];
     [_hero release];
+    [_openAddress release];
     [super dealloc];
 }
 
@@ -3016,7 +3023,14 @@ static NSArray *YZEngineLogos(void) {
     [table deselectRowAtIndexPath:path animated:YES];
     NSString *address = [[[self links] objectAtIndex:path.row] objectAtIndex:2];
     NSURL *url = [address length] ? [NSURL URLWithString:address] : nil;
-    if (url)
+    if (!url)
+        return;
+    // a web address opens in a tab of Yozora, the browser closes this screen first; openURL: would hand it to Safari
+    NSString *scheme = [[url scheme] lowercaseString];
+    BOOL web = [scheme isEqualToString:@"http"] || [scheme isEqualToString:@"https"];
+    if (web && _openAddress)
+        _openAddress(address);
+    else
         [[UIApplication sharedApplication] openURL:url];
 }
 

@@ -20,4 +20,7 @@
 - (NSURL *)localURLForFiles:(NSDictionary *)files stream:(unsigned *)stream generation:(unsigned *)generation;
 /* forgets a stream; a stream of an older proxy is left alone, ids start again with every proxy */
 - (void)releaseStream:(unsigned)stream generation:(unsigned)generation;
+/* the roots changed (a certificate was added or taken away): the proxy stops and the next stream starts one with the new file, streams in
+   flight fail */
+- (void)rootsChanged;
 @end

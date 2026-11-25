@@ -1,5 +1,6 @@
 #import <objc/message.h>
 #import "YZBrowserController.h"
+#import "YZCertificates.h"
 #import "YZClassic.h"
 #import "YZSystemNotifier.h"
 #import "YZControls.h"
@@ -560,7 +561,7 @@ static UIImage *YZThumbnailFromView(UIView *view) {
             _initialPopupCore = NULL;
         } else
             _core = yozora_core_create([[resources stringByAppendingPathComponent:@"fonts"] fileSystemRepresentation],
-                                      [[resources stringByAppendingPathComponent:@"ca-bundle.crt"] fileSystemRepresentation],
+                                      [[YZCertificates rootsPath] fileSystemRepresentation],
                                       error, sizeof(error));
     }
     if (!_core) {

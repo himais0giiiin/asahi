@@ -16,6 +16,8 @@
 #import "YZAdblockController.h"
 #import "YZLogController.h"
 #import "YZSitesController.h"
+#import "YZCertificates.h"
+#import "YZCertificatesController.h"
 #import "YZShape.h"
 #import "YZMotion.h"
 #import "YZSettings.h"
@@ -43,6 +45,7 @@ typedef enum {
     YZRowAdblockRules,
     YZRowSitePermissions,
     YZRowDns,
+    YZRowCertificates,
     YZRowBlockThirdPartyCookies,
     YZRowSaveHistory,
     YZRowClearHistory,
@@ -1304,7 +1307,7 @@ static NSArray *YZEngineTints(void) {
     NSNumber *(^row)(YZRow) = ^(YZRow kind) { return [NSNumber numberWithInt:kind]; };
     return [NSArray arrayWithObjects:
         [self generalSection:row],
-        [NSArray arrayWithObjects:YZT(@"Приватность и безопасность"), row(YZRowBlockTrackers), row(YZRowAdblockRules), row(YZRowSitePermissions), row(YZRowDns), row(YZRowBlockThirdPartyCookies),
+        [NSArray arrayWithObjects:YZT(@"Приватность и безопасность"), row(YZRowBlockTrackers), row(YZRowAdblockRules), row(YZRowSitePermissions), row(YZRowDns), row(YZRowCertificates), row(YZRowBlockThirdPartyCookies),
          row(YZRowSaveHistory), row(YZRowClearHistory), row(YZRowClearSiteData), nil],
         [NSArray arrayWithObjects:YZT(@"Страницы"), row(YZRowJavascript), row(YZRowEconomy), row(YZRowReduceMotion), row(YZRowHideBars), row(YZRowWebFonts), nil],
         [NSArray arrayWithObjects:YZT(@"Для разработчиков"), row(YZRowDebug), row(YZRowLogging), row(YZRowLogOpen), row(YZRowZombies), row(YZRowUnlockDesigns), row(YZRowJit), row(YZRowJitState), nil],
@@ -1630,6 +1633,7 @@ static NSArray *YZEngineLogos(void) {
     case YZRowAdblockRules: return YZT(@"Правила блокировщика");
     case YZRowSitePermissions: return YZT(@"Разрешения сайтов");
     case YZRowDns: return @"DNS";
+    case YZRowCertificates: return YZT(@"Сертификаты");
     case YZRowBlockThirdPartyCookies: return YZT(@"Блокировать cookie сторонних сайтов");
     case YZRowSaveHistory: return YZT(@"Сохранять историю");
     case YZRowClearHistory: return YZT(@"Очистить историю");
@@ -1673,6 +1677,10 @@ static NSArray *YZEngineLogos(void) {
     case YZRowAdblockRules: return YZT(@"Свои правила, как в списках Adblock Plus");
     case YZRowSitePermissions: return YZT(@"Место, уведомления и сайты без блокировщика");
     case YZRowDns: return [self dnsName];
+    case YZRowCertificates: {
+        NSUInteger count = [[YZCertificates entries] count];
+        return count ? [NSString stringWithFormat:YZT(@"Свои корневые сертификаты: %lu"), (unsigned long)count] : YZT(@"Свои корневые сертификаты для сайтов и сетей");
+    }
     case YZRowEconomy: return YZT(@"Страницы рисуются быстрее и мягче");
     case YZRowReduceMotion: return YZT(@"Сайты анимируют меньше и реже");
     case YZRowHideBars: return YZT(@"Страница занимает весь экран, адрес возвращается наверху страницы");
@@ -1704,6 +1712,7 @@ static NSArray *YZEngineLogos(void) {
     case YZRowAdblockRules: return YZIconCode;
     case YZRowSitePermissions: return YZIconLink;
     case YZRowDns: return YZIconShield;
+    case YZRowCertificates: return YZIconLock;
     case YZRowBlockThirdPartyCookies: return YZIconCookie;
     case YZRowSaveHistory: return YZIconHistory;
     case YZRowClearHistory: return YZIconDelete;
@@ -2147,6 +2156,12 @@ static NSArray *YZEngineLogos(void) {
             [me changed];
         }];
         break;
+    case YZRowCertificates: {
+        YZCertificatesController *certificates = [[YZCertificatesController alloc] init];
+        [self.navigationController pushViewController:certificates animated:YES];
+        [certificates release];
+        break;
+    }
     case YZRowSitePermissions: {
         YZSitesController *sites = [[YZSitesController alloc] init];
         [self.navigationController pushViewController:sites animated:YES];

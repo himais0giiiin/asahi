@@ -508,6 +508,19 @@ extern "C" yozora_core* yozora_core_create(const char* fonts, const char* roots,
     return core;
 }
 
+extern "C" void yozora_core_set_roots(const char* roots)
+{
+    struct stat info;
+    if (!roots || stat(roots, &info) || !S_ISREG(info.st_mode) || info.st_size < 1 || info.st_size > 1024 * 1024)
+        return;
+    std::string path(roots);
+    // the loader reads the path on the core thread, so it is changed there
+    YozoraCoreThread::call([&] {
+        CurlContext::singleton().sslHandle().setCACertPath(String::fromUTF8(path.c_str()));
+        yozora_translate_set_roots(path.c_str());
+    });
+}
+
 yozora_core* core_create_popup(yozora_core& opener, LocalFrame& frame)
 {
     pthread_mutex_lock(&opener.lock);

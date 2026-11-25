@@ -156,6 +156,8 @@ function(yozora_add_core)
             "${yozora_root}/app/YZLogController.m"
             "${yozora_root}/app/YZSystemNotifier.m"
             "${yozora_root}/app/YZSitesController.m"
+            "${yozora_root}/app/YZCertificates.m"
+            "${yozora_root}/app/YZCertificatesController.m"
             "${yozora_root}/app/YZAdblockController.m"
             "${yozora_root}/app/YZDebugOverlay.m"
             "${yozora_root}/app/YZTranslation.m"

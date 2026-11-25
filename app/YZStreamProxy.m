@@ -1,4 +1,5 @@
 #import "YZStreamProxy.h"
+#import "YZCertificates.h"
 #import <AVFoundation/AVFoundation.h>
 #include <fcntl.h>
 #include <string.h>
@@ -90,7 +91,7 @@ static void YZFilesRelease(void *context) {
         yozora_proxy_stop(_proxy);
         _proxy = NULL;
     }
-    NSString *roots = [[NSBundle mainBundle] pathForResource:@"ca-bundle" ofType:@"crt"];
+    NSString *roots = [YZCertificates rootsPath];
     if (!roots) {
         NSLog(@"yozora: the root certificates are missing from the bundle, the stream proxy cannot start");
         return NO;
@@ -109,6 +110,14 @@ static void YZFilesRelease(void *context) {
     }
     ++_generation;
     return YES;
+}
+
+- (void)rootsChanged {
+    @synchronized(self) {
+        if (_proxy)
+            yozora_proxy_stop(_proxy);
+        _proxy = NULL;
+    }
 }
 
 - (NSURL *)proxiedURLForRequest:(const yozora_media_request *)request stream:(unsigned *)stream generation:(unsigned *)generation {

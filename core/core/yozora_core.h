@@ -99,6 +99,9 @@ typedef struct {
 
 /* waits until the core exists, the first call also starts the core thread */
 yozora_core *yozora_core_create(const char *fonts, const char *roots, char *error, size_t capacity);
+/* the file of root certificates for every request from now on (page loads and translation); the file must stay while requests use it.
+   a path the core cannot read is ignored */
+void yozora_core_set_roots(const char *roots);
 void yozora_core_destroy(yozora_core *core);
 /* transfers ownership to the core thread, no calls may use core after this returns */
 void yozora_core_destroy_async(yozora_core *core);

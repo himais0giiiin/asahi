@@ -108,6 +108,11 @@ static UILabel *YZToastLabel(void) {
     BOOL _brightnessChanged;
     BOOL _idleWas;
     BOOL _appeared;
+    // what the controls show now, so a tick of the timer redraws only what changed: a glyph drawn again every
+    // quarter second took main thread time that the fade of the controls needs on an iphone 4s
+    int _shownMute;
+    double _shownRate;
+    NSUInteger _chromeToken;
 }
 - (void)refreshPlayback;
 - (void)startPlayback;
@@ -433,6 +438,8 @@ static UILabel *YZToastLabel(void) {
             [self seekTo:0];
         [self play];
     }
+    // the glyph answers the tap now, not at the next tick of the timer
+    [self updateControls];
     [self showChromeAndArmTimer];
 }
 
@@ -682,11 +689,24 @@ static UILabel *YZToastLabel(void) {
         CGAffineTransformMakeScale(0.82f, 0.82f),
         CGAffineTransformConcat(CGAffineTransformMakeScale(0.94f, 0.94f), CGAffineTransformMakeTranslation(0, 14))
     };
+    NSUInteger token = ++_chromeToken;
     for (NSUInteger i = 0; i < 3; ++i) {
         UIView *group = [groups objectAtIndex:i];
         group.userInteractionEnabled = shown;
+        // a group that fades over the picture is drawn off screen again on every frame, because its buttons have
+        // translucent backs. the bottom group holds the travelling wave, which would redraw the cache as well
+        BOOL cached = animated && group != _bottom;
+        if (cached) {
+            group.layer.rasterizationScale = [UIScreen mainScreen].scale;
+            group.layer.shouldRasterize = YES;
+        }
         YZMotionAnimateView(group, shown ? CGAffineTransformIdentity : away[i], shown ? 1 : 0, shown ? YOZORA_MOTION_WOBBLE : YOZORA_MOTION_DISMISS,
-                            animated ? 0.04 * i : 0, nil);
+                            animated ? 0.04 * i : 0, ^(BOOL finished) {
+            (void)finished;
+            // a newer change of the controls owns the cache now
+            if (token == _chromeToken)
+                group.layer.shouldRasterize = NO;
+        });
     }
     [YZTheme animate:^{
         _topScrim.alpha = shown ? 1 : 0;
@@ -710,11 +730,20 @@ static UILabel *YZToastLabel(void) {
         _elapsed.text = YZClock(_position);
         _remaining.text = live ? YZT(@"В эфире") : [@"-" stringByAppendingString:YZClock(_duration - _position)];
     }
-    [_speed setTitle:YZRateText(_mediaPlayer.playbackRate) forState:UIControlStateNormal];
-    [_mute setImage:YZPlayerSpeakerImage(_mediaPlayer.muted, 24, [UIColor whiteColor]) forState:UIControlStateNormal];
-    _mute.accessibilityLabel = _mediaPlayer.muted ? YZT(@"Включить звук") : YZT(@"Выключить звук");
+    double rate = _mediaPlayer.playbackRate;
+    if (rate != _shownRate) {
+        _shownRate = rate;
+        [_speed setTitle:YZRateText(rate) forState:UIControlStateNormal];
+    }
+    int muteState = _mediaPlayer.muted ? 2 : 1;
+    if (muteState != _shownMute) {
+        _shownMute = muteState;
+        [_mute setImage:YZPlayerSpeakerImage(muteState == 2, 24, [UIColor whiteColor]) forState:UIControlStateNormal];
+        _mute.accessibilityLabel = muteState == 2 ? YZT(@"Включить звук") : YZT(@"Выключить звук");
+    }
     // the controls of a picture stay up while sound plays alone and the video is paused
-    if (!playing && !_chromeShown)
+    // a stall of a playing video must not bring the controls back in the middle of their way out
+    if (!playing && !_mediaPlayer.buffering && !_chromeShown)
         [self setChromeShown:YES animated:YES];
 }
 

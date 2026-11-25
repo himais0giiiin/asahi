@@ -13,6 +13,7 @@ javascriptcore of the same revision as webcore, linked statically.
 
 the jit needs memory that is both writable and executable. the entitlement is signed in `tools/yozora-jit.entitlements`, and the core reserves the executable region early, on the core thread, before uikit starts.
 
+
 ## what was fixed in the port
 
 the 32 bit arm jit of this revision did not run as shipped. `core/patches/webkit-yozora.patch` carries the changes: linked property caches, the darwin calling convention for doubles, concurrent compilation, map and set iterators under dfg. each has a regression in `tests/jit_device.sh` that requires optimized compilation to happen.
@@ -22,6 +23,8 @@ the 32 bit arm jit of this revision did not run as shipped. `core/patches/webkit
 on arm64 a new install asks once at the first launch whether to turn the jit on (`offerJit` in `YZBrowserController`). the answer is stored as the switch and counts at the next launch, because the jit is chosen in `main` before any screen exists.
 
 a launch with the jit sets a mark (`YZJitStarting`) before JavaScriptCore starts and clears it once the browser is up. when the next launch finds the mark, the earlier one died on the way: the jit is turned off, the switch goes off, and a notice says so. this keeps a jit that kills the launch from locking the person out of the switch. a normal quit during the first second leaves the mark too and costs the jit the same way, it can be turned on again.
+
+if the start mark cannot be saved, the app starts in the interpreter and reports the failure. a mark left while the jit is switched off is cleared without turning a later choice off.
 
 developer settings show a jit switch and a line with what javascriptcore reports after it started: baseline, dfg, regexp, or why it is off. the switch is read once in `main`, it counts at the next launch.
 

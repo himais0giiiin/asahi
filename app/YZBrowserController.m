@@ -3157,6 +3157,16 @@ typedef enum {
     if (_jitDialog)
         return;
     __block YZBrowserController *me = self;
+    if ([YZSettings jitStartMarkUnavailable]) {
+        _jitDialog = [[YZDialog dialogWithTitle:YZT(@"JIT выключен") message:YZT(@"Не удалось сохранить защиту запуска JIT. В этом запуске используется интерпретатор.")
+                                    cancelTitle:nil confirmTitle:YZT(@"Понятно") destructive:NO handler:^(NSInteger index, NSArray *texts) {
+            (void)index; (void)texts;
+            [me->_jitDialog release];
+            me->_jitDialog = nil;
+        }] retain];
+        [_jitDialog showInView:self.view];
+        return;
+    }
     if ([YZSettings jitDisabledAfterFailedStart]) {
         _jitDialog = [[YZDialog dialogWithTitle:YZT(@"JIT выключен") message:YZT(@"Прошлый запуск с JIT оборвался, поэтому он выключен. Включить его снова можно в настройках разработчика.")
                                     cancelTitle:nil confirmTitle:YZT(@"Понятно") destructive:NO handler:^(NSInteger index, NSArray *texts) {
@@ -3171,7 +3181,7 @@ typedef enum {
     if ([YZSettings jitAnswered])
         return;
     _jitDialog = [[YZDialog dialogWithTitle:YZT(@"Включить JIT?")
-                                    message:YZT(@"JIT ускоряет сайты с тяжёлым JavaScript. На arm64 он ещё не проверен на устройстве и на новых версиях iOS может оборвать запуск: тогда при следующем запуске он выключится сам. Выбор вступит в силу после перезапуска приложения.")
+                                    message:YZT(@"JIT ускоряет сайты с тяжёлым JavaScript. На некоторых версиях iOS с ним возникают трудности и запуск может оборваться: тогда при следующем запуске он выключится сам. Выбор вступит в силу после перезапуска приложения.")
                                 cancelTitle:YZT(@"Не включать") confirmTitle:YZT(@"Включить") destructive:NO handler:^(NSInteger index, NSArray *texts) {
         (void)texts;
         [me->_jitDialog release];

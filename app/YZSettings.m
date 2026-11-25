@@ -45,6 +45,7 @@ static NSString *const YZJitKey = @"YZJit";
 // set while a launch with the jit has not reached the browser yet
 static NSString *const YZJitStartingKey = @"YZJitStarting";
 static BOOL YZJitDisabledByFailedStart;
+static BOOL YZJitStartMarkUnavailable;
 
 // colors ask for the accent on every call, so it is read once and kept until it changes. there are two
 // accents, the normal profile's and the private session's, each under three keys
@@ -367,18 +368,42 @@ static void YZClearAccent(BOOL isPrivate) {
 
 // a launch that died while JavaScriptCore started leaves the mark, and the executable mapping is the likely
 // cause: the next launch runs without the jit instead of dying again before the person can reach the switch
-+ (void)beginJitStart {
-    if (![self jit])
-        return;
++ (BOOL)beginJitStart {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    // the start mark below only covers the start of the engine, and the generated code that does not run on a phone
+    // fails later, after the browser is up. any crash of the run before turns the jit off, whatever the thread was doing
+    if ([self jit] && [YZCrash previousRunCrashed]) {
+        [defaults setBool:NO forKey:YZJitKey];
+        [defaults removeObjectForKey:YZJitStartingKey];
+        YZJitDisabledByFailedStart = YES;
+        if (![defaults synchronize])
+            NSLog(@"yozora: the disabled jit setting could not be saved");
+        return NO;
+    }
+    if (![self jit]) {
+        if ([defaults boolForKey:YZJitStartingKey]) {
+            [defaults removeObjectForKey:YZJitStartingKey];
+            if (![defaults synchronize])
+                NSLog(@"yozora: the old jit start mark could not be cleared");
+        }
+        return NO;
+    }
     if ([defaults boolForKey:YZJitStartingKey]) {
         [defaults setBool:NO forKey:YZJitKey];
         [defaults removeObjectForKey:YZJitStartingKey];
         YZJitDisabledByFailedStart = YES;
-    } else
-        [defaults setBool:YES forKey:YZJitStartingKey];
-    // written now: the process may be gone within a second
-    [defaults synchronize];
+        if (![defaults synchronize])
+            NSLog(@"yozora: the disabled jit setting could not be saved");
+        return NO;
+    }
+    [defaults setBool:YES forKey:YZJitStartingKey];
+    // ios may kill the process during the first jit write, before defaults flush on their own
+    if (![defaults synchronize]) {
+        YZJitStartMarkUnavailable = YES;
+        NSLog(@"yozora: the jit start mark could not be saved, starting without the jit");
+        return NO;
+    }
+    return YES;
 }
 
 + (void)endJitStart {
@@ -386,10 +411,12 @@ static void YZClearAccent(BOOL isPrivate) {
     if (![defaults objectForKey:YZJitStartingKey])
         return;
     [defaults removeObjectForKey:YZJitStartingKey];
-    [defaults synchronize];
+    if (![defaults synchronize])
+        NSLog(@"yozora: the jit start mark could not be cleared");
 }
 
 + (BOOL)jitDisabledAfterFailedStart { return YZJitDisabledByFailedStart; }
++ (BOOL)jitStartMarkUnavailable { return YZJitStartMarkUnavailable; }
 
 + (BOOL)incognito { return YZIncognito; }
 + (void)setIncognito:(BOOL)enabled {

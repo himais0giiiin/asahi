@@ -38,6 +38,7 @@ static char YZCrashAppLine[160];
 static char YZCrashSystemLine[160];
 static char YZCrashBinaryLine[160];
 static NSUncaughtExceptionHandler *YZCrashPreviousHandler;
+static BOOL YZCrashPreviousCrashed;
 static struct sigaction YZCrashPrevious[sizeof YZCrashSignals / sizeof YZCrashSignals[0]];
 static char YZCrashStack[64 * 1024];
 
@@ -949,6 +950,8 @@ static void YZCrashRotate(const char *path) {
     return [YZCrashDirectory() stringByAppendingPathComponent:@"yozora-crash.log"];
 }
 
++ (BOOL)previousRunCrashed { return YZCrashPreviousCrashed; }
+
 + (void)install {
     static BOOL installed;
     if (installed)
@@ -976,6 +979,7 @@ static void YZCrashRotate(const char *path) {
             if (mapped != MAP_FAILED) {
                 YZCrashRunState = (YZCrashRun *)mapped;
                 YZCrashRun previous = *YZCrashRunState;
+                YZCrashPreviousCrashed = previous.magic == YZCrashRunMagic && previous.state == YZCrashRunCrashed;
                 memset(YZCrashRunState, 0, sizeof(YZCrashRun));
                 YZCrashRunState->magic = YZCrashRunMagic;
                 YZCrashRunState->pid = getpid();

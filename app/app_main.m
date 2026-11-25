@@ -292,8 +292,7 @@ int main(int argc, char **argv) {
     // started here so a launch that dies in the engine start still has a log
     [YZLog setCapturing:[YZSettings logging]];
     // the jit is chosen while JavaScriptCore starts, so the setting is read here and a change in the settings counts at the next launch
-    [YZSettings beginJitStart];
-    yozora_set_jit_requested([YZSettings jit] ? 1 : 0);
+    yozora_set_jit_requested([YZSettings beginJitStart] ? 1 : 0);
     [YZCrash note:@"launch: javascriptcore start"];
     yozora_initialize_javascript();
     [YZCrash note:@"launch: javascriptcore ready"];

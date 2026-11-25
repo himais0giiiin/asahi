@@ -9,6 +9,9 @@
 /* installs the handlers and the watchdog, once, at the start of the app. reads the marker of the run before and writes a
    block when that run ended without a clean exit and without a crash block of its own */
 + (void)install;
+/* the run before ended in a crash block of its own (a signal or an uncaught exception), read from its marker by +install.
+   a kill, a hang and a clean end are not crashes. valid after +install */
++ (BOOL)previousRunCrashed;
 /* the app state, so a quiet watchdog in the background is not read as a hang and a kill in the foreground is told from a
    normal end of a suspended app. called from the app delegate */
 + (void)applicationDidEnterBackground;

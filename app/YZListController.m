@@ -63,7 +63,7 @@
     _kind = kind;
     _rows = [[NSMutableArray alloc] init];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(iconLoaded:) name:YZFaviconDidLoadNotification object:nil];
-    self.title = kind == YZListBookmarks ? YZT(@"Закладки") : YZT(@"История");
+    self.title = kind == YZListBookmarks ? YZT(@"Избранное") : YZT(@"История");
     return self;
 }
 

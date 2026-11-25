@@ -305,7 +305,7 @@ static const CGFloat YZLightPhoto = 0.55f;
     CGFloat block = columns * YZTileCell;
     CGFloat left = floor((width - block) / 2);
     // the heading runs to the side margin, not to the end of the tile block: a section of one tile is one
-    // tile wide and cut "Закладки" to "Закла..."
+    // tile wide and cut "Избранное" to "Избра..."
     CGFloat headingLeft = left + (YZTileCell - YZTileSize) / 2;
     title.frame = CGRectMake(headingLeft, top, MAX((CGFloat)0, width - YZTileSide - headingLeft), 22);
     if (_contentDirty) {
@@ -410,7 +410,7 @@ static const CGFloat YZLightPhoto = 0.55f;
     _heroTitle.text = YZT(@"Приватный просмотр");
     _heroTitle.textColor = [YZTheme textColor];
     _heroText.text = [NSString stringWithFormat:@"%@\n\n%@", YZT(@"Страницы не попадают в историю. Cookie и данные сайтов удаляются, когда закрыта последняя приватная вкладка."),
-                      YZT(@"Загруженные файлы и закладки сохраняются.")];
+                      YZT(@"Загруженные файлы и избранное сохраняются.")];
     _heroText.textColor = [YZTheme subtleTextColor];
     for (UIView *tile in self.subviews) {
         if ([tile isKindOfClass:[YZTileButton class]])
@@ -458,7 +458,7 @@ static const CGFloat YZLightPhoto = 0.55f;
         sites = defaults;
     }
     top = [self layoutSection:YZT(@"Недавние вкладки") records:sites tiles:_siteTiles title:_sitesHeading top:top];
-    top = [self layoutSection:YZT(@"Закладки") records:_bookmarks tiles:_bookmarkTiles title:_bookmarksHeading top:top];
+    top = [self layoutSection:YZT(@"Избранное") records:_bookmarks tiles:_bookmarkTiles title:_bookmarksHeading top:top];
     self.contentSize = CGSizeMake(self.bounds.size.width, top + 16);
     _contentDirty = NO;
 }

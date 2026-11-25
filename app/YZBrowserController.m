@@ -2265,7 +2265,7 @@ static const CGFloat YZTabStripHeight = 44;
     } else {
         add(YZMenuNewTab, YZT(@"Новая вкладка"), YZIconPlus);
     }
-    add(YZMenuBookmarks, YZT(@"Закладки"), YZIconBookmarks);
+    add(YZMenuBookmarks, YZT(@"Избранное"), YZIconBookmarks);
     // the history of the profile is not shown in the private session
     if (!incognito)
         add(YZMenuHistory, YZT(@"История"), YZIconHistory);

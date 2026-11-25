@@ -45,6 +45,9 @@ def main():
             robust = function.endswith("RobustANGLE")
             base = function[3:-len("RobustANGLE")] if robust else function[3:]
             drop = {"bufSize", "paramCount", "length", "columns", "rows"} if robust else set()
+            # glGetInternalformativ itself takes the output capacity, unlike other robust getters
+            if function == "GL_GetInternalformativRobustANGLE":
+                drop.remove("paramCount")
             kept = [(parameter, name) for parameter, name in zip(params, names) if name not in drop]
             signature = ", ".join(parameter for parameter, _ in kept) or "void"
             arguments = ", ".join(name for _, name in kept)

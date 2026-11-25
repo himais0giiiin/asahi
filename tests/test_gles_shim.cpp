@@ -127,6 +127,10 @@ static void testContext(int version)
     CHECK(GL_GetError() == GL_NO_ERROR);
 
     if (version >= 3) {
+        GLint sampleCount = -1;
+        GL_GetInternalformativRobustANGLE(GL_RENDERBUFFER, GL_RGBA8, GL_NUM_SAMPLE_COUNTS, 1, nullptr, &sampleCount);
+        CHECK(GL_GetError() == GL_NO_ERROR);
+        CHECK(sampleCount >= 0);
         // the core calls reach the driver under the names of ES 3.0
         GLuint array = 0;
         GL_GenVertexArraysOES(1, &array);

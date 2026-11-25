@@ -41,6 +41,8 @@
     YZBrowserController *_popupOwner;
     // the player of a video or audio of the page, there is at most one
     YZVideoController *_videoController;
+    // the player that is sliding away: its picture is still in the full screen view, the page must not take it yet
+    unsigned _leavingVideoID;
     NSMutableDictionary *_mediaPlayers;
     BOOL _popupMode;
     // the question for a name and a password that a site asked, and the number the core gave it

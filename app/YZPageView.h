@@ -31,6 +31,7 @@
     yozora_input_kind _inputKind;
     YZSceneView *_sceneView;
     NSMutableDictionary *_mediaLayers;
+    NSMutableDictionary *_videoPlaces;
     CFTimeInterval _tapTime;
     // the text the user selected: two handles at its ends and the menu with the copy action, which needs a responder that is no keyboard
     UIView *_startHandle;

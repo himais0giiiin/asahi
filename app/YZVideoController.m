@@ -405,10 +405,8 @@ static UILabel *YZToastLabel(void) {
     [UIApplication sharedApplication].idleTimerDisabled = _idleWas;
     if (_brightnessChanged)
         [UIScreen mainScreen].brightness = _brightnessBefore;
-    // the layer goes back to the page the way it came: stretched over the rectangle of the picture
-    if ([_layer isKindOfClass:[AVPlayerLayer class]])
-        ((AVPlayerLayer *)_layer).videoGravity = AVLayerVideoGravityResize;
-    [_layer removeFromSuperlayer];
+    // the layer stays in the stage until the screen is gone: taking it out at once left a black screen sliding
+    // down over the page. the page takes it back and sets its gravity when it places the picture again
     _layer = nil;
 }
 

@@ -1,6 +1,7 @@
 #import "YZPageView.h"
 #import "YZSceneView.h"
 #import "YZMediaPlayer.h"
+#import <AVFoundation/AVFoundation.h>
 #import "YZTheme.h"
 #import "YZStrings.h"
 #import <QuartzCore/QuartzCore.h>
@@ -109,6 +110,13 @@ static NSInteger YZOffsetOf(UITextPosition *position) {
     return [position isKindOfClass:[YZTextPosition class]] ? ((YZTextPosition *)position)->offset : 0;
 }
 
+typedef struct {
+    CALayer *host;
+    int x, y, width, height, scroll;
+    uint64_t layer;
+    CGRect frame;
+} YZVideoPlace;
+
 @implementation YZPageView
 @synthesize selectionHidden = _selectionHidden;
 @synthesize core = _core;
@@ -163,6 +171,7 @@ static NSInteger YZOffsetOf(UITextPosition *position) {
     [(id)_tokenizer release];
     [_zoomHost release];
     [_mediaLayers release];
+    [_videoPlaces release];
     [super dealloc];
 }
 
@@ -192,6 +201,8 @@ static NSInteger YZOffsetOf(UITextPosition *position) {
 
 - (void)showScene:(yozora_scene *)scene {
     [_sceneView showScene:scene];
+    // the layers stand where this scene put them, before the scroll of the moment moves them
+    [self measureVideos:YES];
     // where a tile is not there yet the page color shows, not white, a dark page flashed white when scrolled
     // faster than it was painted
     if (scene && !*yozora_scene_error(scene)) {
@@ -215,11 +226,54 @@ static NSInteger YZOffsetOf(UITextPosition *position) {
         [_sceneView scrollWithCore:_core];
 }
 
+// where a video stands in the layer that holds it, fixed when the scene of its layout arrives. the layer follows its
+// scroll node, a fixed or sticky player included, so the place needs no scroll position after that. the old place was
+// worked out from the scroll of every frame and slid off a fixed player (YouTube pins its player) while the page scrolled
+- (void)measureVideos:(BOOL)force {
+    if (!_core)
+        return;
+    if (!_videoPlaces)
+        _videoPlaces = [[NSMutableDictionary alloc] init];
+    yozora_video videos[YOZORA_MAX_VIDEOS];
+    int count = yozora_core_videos(_core, videos, YOZORA_MAX_VIDEOS);
+    int scroll = yozora_core_scroll_y(_core);
+    NSMutableSet *present = [NSMutableSet set];
+    for (int i = 0; i < count; ++i) {
+        NSNumber *key = [NSNumber numberWithUnsignedInt:videos[i].id];
+        [present addObject:key];
+        CALayer *host = [_sceneView contentsLayerForLayerID:videos[i].layer];
+        NSValue *saved = [_videoPlaces objectForKey:key];
+        if (saved && !force) {
+            YZVideoPlace old;
+            [saved getValue:&old];
+            if (old.host == host && old.x == videos[i].x && old.y == videos[i].y && old.width == videos[i].width
+                && old.height == videos[i].height && old.layer == videos[i].layer)
+                continue;
+        }
+        YZVideoPlace place;
+        memset(&place, 0, sizeof(place));
+        place.host = host;
+        place.x = videos[i].x;
+        place.y = videos[i].y;
+        place.width = videos[i].width;
+        place.height = videos[i].height;
+        place.layer = videos[i].layer;
+        place.scroll = scroll;
+        CGRect box = CGRectMake(videos[i].x, videos[i].y, videos[i].width, videos[i].height);
+        place.frame = host ? [host convertRect:box fromLayer:_zoomHost.layer] : box;
+        [_videoPlaces setObject:[NSValue valueWithBytes:&place objCType:@encode(YZVideoPlace)] forKey:key];
+    }
+    for (NSNumber *key in [_videoPlaces allKeys]) {
+        if (![present containsObject:key])
+            [_videoPlaces removeObjectForKey:key];
+    }
+}
+
 - (void)showMediaPlayers:(NSArray *)players excluding:(unsigned)fullscreenID {
     if (!_mediaLayers)
         _mediaLayers = [[NSMutableDictionary alloc] init];
-    yozora_video videos[YOZORA_MAX_VIDEOS];
-    int count = yozora_core_videos(_core, videos, YOZORA_MAX_VIDEOS);
+    // a list that changed without a new scene (the first picture came) is measured here
+    [self measureVideos:NO];
     int scroll = yozora_core_scroll_y(_core);
     NSMutableSet *present = [NSMutableSet set];
     [CATransaction begin];
@@ -228,28 +282,34 @@ static NSInteger YZOffsetOf(UITextPosition *position) {
         CALayer *layer = player.videoLayer;
         if (!layer || player.mediaID == fullscreenID)
             continue;
-        for (int i = 0; i < count; ++i) {
-            if (videos[i].id != player.mediaID)
-                continue;
-            NSNumber *key = [NSNumber numberWithUnsignedInt:player.mediaID];
-            [present addObject:key];
-            CGRect box = CGRectMake(videos[i].x, videos[i].y - scroll, videos[i].width, videos[i].height);
-            // the picture goes into the layer that holds the video, over its tiles and under the layers
-            // above, so a black background a player page paints under the video (YouTube) does not hide it
-            // and the controls stay over it. an unknown layer puts it under the whole page
-            CALayer *host = [_sceneView contentsLayerForLayerID:videos[i].layer];
-            if (host) {
-                // the tiles that come later are added over it, so it is put last again whenever it is not
-                if ([host.sublayers lastObject] != layer)
-                    [host addSublayer:layer];
-                layer.frame = [host convertRect:box fromLayer:_zoomHost.layer];
-            } else {
+        NSNumber *key = [NSNumber numberWithUnsignedInt:player.mediaID];
+        NSValue *saved = [_videoPlaces objectForKey:key];
+        if (!saved)
+            continue;
+        YZVideoPlace place;
+        [saved getValue:&place];
+        [present addObject:key];
+        // the full screen player puts the picture whole on the screen, on the page it is stretched over the rectangle
+        // the page gave it, which has the proportions of the video
+        if ([layer isKindOfClass:[AVPlayerLayer class]] && ![((AVPlayerLayer *)layer).videoGravity isEqualToString:AVLayerVideoGravityResize])
+            ((AVPlayerLayer *)layer).videoGravity = AVLayerVideoGravityResize;
+        // the picture goes into the layer that holds the video, over its tiles and under the layers
+        // above, so a black background a player page paints under the video (YouTube) does not hide it
+        // and the controls stay over it. an unknown layer puts it under the whole page
+        if (place.host) {
+            // the tiles that come later are added over it, so it is put last again whenever it is not
+            if (layer.superlayer != place.host || [place.host.sublayers lastObject] != layer)
+                [place.host addSublayer:layer];
+            if (!CGRectEqualToRect(layer.frame, place.frame))
+                layer.frame = place.frame;
+        } else {
+            if (layer.superlayer != _zoomHost.layer)
                 [_zoomHost.layer insertSublayer:layer below:_sceneView.layer];
-                layer.frame = box;
-            }
-            [_mediaLayers setObject:layer forKey:key];
-            break;
+            CGRect frame = place.frame;
+            frame.origin.y += place.scroll - scroll;
+            layer.frame = frame;
         }
+        [_mediaLayers setObject:layer forKey:key];
     }
     for (NSNumber *key in [_mediaLayers allKeys]) {
         if (![present containsObject:key]) {
@@ -272,6 +332,7 @@ static NSInteger YZOffsetOf(UITextPosition *position) {
             [layer removeFromSuperlayer];
     }
     [_mediaLayers removeAllObjects];
+    [_videoPlaces removeAllObjects];
 }
 
 - (void)stopFling {

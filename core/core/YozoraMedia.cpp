@@ -934,10 +934,9 @@ void yozora_media_install()
     MediaPlayerFactorySupport::callRegisterMediaEngine(register_engine);
 }
 
-void yozora_media_publish(yozora_core& core, LocalFrameView& view)
+void yozora_media_publish(yozora_core& core, LocalFrameView&)
 {
     std::vector<yozora_video> found;
-    int scroll_y = view.scrollPosition().y();
     for (auto& weak : HTMLMediaElement::allMediaElements()) {
         if (found.size() >= YOZORA_MAX_VIDEOS)
             break;
@@ -955,12 +954,22 @@ void yozora_media_publish(yozora_core& core, LocalFrameView& view)
         uint64_t layer_id = 0;
         if (CheckedPtr layer = renderer->enclosingLayer()) {
             if (CheckedPtr compositing = layer->enclosingCompositingLayer()) {
-                if (auto* backing = compositing->backing())
-                    layer_id = yozoraGraphicsLayerId(backing->graphicsLayer());
+                if (auto* backing = compositing->backing()) {
+                    // a replaced element paints in the foreground phase, which lives in the foreground layer when the
+                    // backing has one (composited children with a negative z index), or in the scrolled contents layer
+                    // of a scrolling box. the primary layer sits under those children, so a black player background
+                    // composited there would cover a picture put into it
+                    GraphicsLayer* painted = backing->foregroundLayer();
+                    if (!painted)
+                        painted = backing->scrolledContentsLayer();
+                    if (!painted)
+                        painted = backing->graphicsLayer();
+                    layer_id = yozoraGraphicsLayerId(painted);
+                }
             }
         }
-        found.push_back(yozora_video { engine->id(), box.x(), box.y() + scroll_y, box.width(), box.height(), layer_id });
-        yozora_log(YOZORA_LOG_DEBUG, "media", "video of player %u at %d,%d %dx%d in layer %llu", engine->id(), box.x(), box.y() + scroll_y, box.width(), box.height(), static_cast<unsigned long long>(layer_id));
+        found.push_back(yozora_video { engine->id(), box.x(), box.y(), box.width(), box.height(), layer_id });
+        yozora_log(YOZORA_LOG_DEBUG, "media", "video of player %u at %d,%d %dx%d in layer %llu", engine->id(), box.x(), box.y(), box.width(), box.height(), static_cast<unsigned long long>(layer_id));
     }
     core.media_dirty = false;
     pthread_mutex_lock(&core.lock);

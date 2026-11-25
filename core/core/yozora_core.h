@@ -284,9 +284,10 @@ typedef enum {
 } yozora_media_event_kind;
 /* what the player did, for the element that asked. an id the core does not know is ignored */
 void yozora_core_media_event(yozora_core *core, unsigned id, yozora_media_event_kind kind, double value, double extra);
-/* where the page videos are as of the last layout: x and width in view points, y in document points like the
-   tiles. a hidden video or one without a player is not listed. layer is the scene layer id that holds the
-   video, 0 when unknown: the system player picture goes into that layer over its tiles and under what lies
+/* where the page videos are as of the last layout, in view points of the view as it stands at that layout (the
+   scroll position is not added: a fixed or sticky player keeps its place on screen while the page scrolls, and the
+   interface fixes the place in the layer that holds the video when the scene of the same layout arrives). a
+   hidden video or one without a player is not listed. layer is the scene layer id that holds the video, 0 when unknown: the system player picture goes into that layer over its tiles and under what lies
    over it, so a black background painted under the video does not hide it. without a layer it lies under the
    whole page and shows only through what is clear */
 #define YOZORA_MAX_VIDEOS 8

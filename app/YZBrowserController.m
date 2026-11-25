@@ -1996,7 +1996,7 @@ static const CGFloat YZTabStripHeight = 44;
         [_pageView syncScrollOffset];
     if (_barLeaving && CACurrentMediaTime() >= _barLeaveDeadline)
         [self slideBottomBarAway];
-    [_pageView showMediaPlayers:[_mediaPlayers allValues] excluding:_videoController.mediaID];
+    [_pageView showMediaPlayers:[_mediaPlayers allValues] excluding:_videoController ? _videoController.mediaID : _leavingVideoID];
     [_pageView updateSelection];
     yozora_record visit;
     BOOL visited = NO;
@@ -2103,7 +2103,13 @@ static const CGFloat YZTabStripHeight = 44;
     _videoController = nil;
     controller.delegate = nil;
     [controller shutDown];
-    [self dismissViewControllerAnimated:animated completion:^{ [controller release]; }];
+    unsigned mediaID = controller.mediaID;
+    _leavingVideoID = mediaID;
+    [self dismissViewControllerAnimated:animated completion:^{
+        if (_leavingVideoID == mediaID)
+            _leavingVideoID = 0;
+        [controller release];
+    }];
 }
 
 - (void)videoControllerFinished:(YZVideoController *)controller failed:(BOOL)failed {

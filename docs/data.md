@@ -4,6 +4,8 @@
 
 `Library/Yozora`, mode 0700.
 
+if the system denies access to that directory, the app creates a separate profile in `Documents/Yozora`, mode 0700, and reports it once. the choice persists across restarts so new data stays together. the inaccessible profile is not moved or deleted; its history and site data do not appear in the new profile.
+
 - `browser.sqlite3`: history (4096 urls) and bookmarks (1024), mode 0600
 - `cookies.db`
 - `local-storage.txt`: 5 MB per origin

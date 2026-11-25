@@ -381,6 +381,10 @@ static UIImage *YZThumbnailFromView(UIView *view) {
         return;
     if (!_store)
         [self showError:[NSString stringWithFormat:YZT(@"История недоступна: %@"), failure ? failure : YZT(@"профиль не открыт")]];
+    else if ([YZStore usesDocumentsProfile] && ![[NSUserDefaults standardUserDefaults] boolForKey:@"YZDocumentsProfileNotice"]) {
+        [self showError:YZT(@"Папка профиля недоступна. Создан отдельный профиль в Documents/Yozora; прежние данные не удалены.")];
+        [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"YZDocumentsProfileNotice"];
+    }
     YZCoreLinkTarget *target = [[YZCoreLinkTarget alloc] init];
     target->controller = self;
     _linkTarget = target;
@@ -403,7 +407,7 @@ static UIImage *YZThumbnailFromView(UIView *view) {
     // the folder of the files that pages hand over is set with the other places, the core makes it when the first file comes
     yozora_downloads_set_directory([[YZDownloadsController directory] fileSystemRepresentation]);
     char error[256] = {0};
-    NSString *directory = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Yozora"];
+    NSString *directory = [YZStore profileDirectory];
     if (!yozora_set_site_data([directory fileSystemRepresentation], error, sizeof(error)))
         NSLog(@"yozora: cookies and local storage are kept in memory only: %s", error);
 }

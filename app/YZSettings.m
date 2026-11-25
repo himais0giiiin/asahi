@@ -1,6 +1,8 @@
 #import <UIKit/UIKit.h>
 #import "YZSettings.h"
 #import "YZStrings.h"
+#import "YZStore.h"
+#import "YZCrash.h"
 #include "yozora_core.h"
 #include "yozora_translate.h"
 #include <math.h>
@@ -402,7 +404,7 @@ static void YZClearAccent(BOOL isPrivate) {
 static const NSUInteger YZAdblockRulesLimit = 256 * 1024;
 
 static NSString *YZAdblockRulesPath(void) {
-    return [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Yozora/adblock-rules.txt"];
+    return [[YZStore profileDirectory] stringByAppendingPathComponent:@"adblock-rules.txt"];
 }
 
 + (NSString *)adblockRules {

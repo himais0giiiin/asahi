@@ -25,6 +25,9 @@
     NSMutableSet *_bookmarkURLs;
     NSMutableArray *_recent;
 }
+/* the selected durable profile directory, shared by the store and site data */
++ (NSString *)profileDirectory;
++ (BOOL)usesDocumentsProfile;
 /* opens ~/Library/Yozora; on failure returns nil and fills error */
 + (YZStore *)openDefaultStore:(NSString **)error;
 /* returns at once, the row is written on the store queue. failure runs on the main thread with the reason */

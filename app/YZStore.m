@@ -93,8 +93,53 @@ static NSString *YZProfileDetail(NSString *directory) {
 
 @implementation YZStore
 
++ (NSString *)profileDirectory {
+    static NSString *directory;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        NSFileManager *files = [NSFileManager defaultManager];
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        NSString *primary = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Yozora"];
+        NSArray *roots = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+        NSString *alternative = [roots count] ? [[roots objectAtIndex:0] stringByAppendingPathComponent:@"Yozora"] : nil;
+        NSDictionary *mode = [NSDictionary dictionaryWithObject:[NSNumber numberWithUnsignedShort:0700] forKey:NSFilePosixPermissions];
+        BOOL selected = [defaults boolForKey:@"YZDocumentsProfile"];
+        if (!selected) {
+            NSError *failure = nil;
+            BOOL created = [files createDirectoryAtPath:primary withIntermediateDirectories:YES attributes:mode error:&failure];
+            int modeError = 0;
+            if (created && chmod([primary fileSystemRepresentation], 0700) != 0)
+                modeError = errno;
+            NSError *underlying = [[failure userInfo] objectForKey:NSUnderlyingErrorKey];
+            BOOL denied = ([failure.domain isEqualToString:NSCocoaErrorDomain] && failure.code == NSFileWriteNoPermissionError)
+                || ([failure.domain isEqualToString:NSPOSIXErrorDomain] && (failure.code == EACCES || failure.code == EPERM))
+                || ([underlying.domain isEqualToString:NSPOSIXErrorDomain] && (underlying.code == EACCES || underlying.code == EPERM))
+                || modeError == EACCES || modeError == EPERM;
+            if (denied && alternative) {
+                NSError *alternateError = nil;
+                if ([files createDirectoryAtPath:alternative withIntermediateDirectories:YES attributes:mode error:&alternateError]
+                    && chmod([alternative fileSystemRepresentation], 0700) == 0) {
+                    selected = YES;
+                    [defaults setBool:YES forKey:@"YZDocumentsProfile"];
+                    [defaults synchronize];
+                    NSLog(@"yozora: Library/Yozora is inaccessible (%@); using a separate profile in Documents/Yozora", failure);
+                } else {
+                    NSLog(@"yozora: Documents/Yozora is unavailable: %@ (%s)", alternateError, strerror(errno));
+                }
+            }
+        }
+        directory = [(selected && alternative ? alternative : primary) copy];
+    });
+    return directory;
+}
+
++ (BOOL)usesDocumentsProfile {
+    [self profileDirectory];
+    return [[NSUserDefaults standardUserDefaults] boolForKey:@"YZDocumentsProfile"];
+}
+
 + (YZStore *)openDefaultStore:(NSString **)error {
-    NSString *directory = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Yozora"];
+    NSString *directory = [self profileDirectory];
     NSFileManager *manager = [NSFileManager defaultManager];
     NSDictionary *attributes = [NSDictionary dictionaryWithObject:[NSNumber numberWithUnsignedShort:0700]
                                                            forKey:NSFilePosixPermissions];

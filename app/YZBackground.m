@@ -1,5 +1,6 @@
 #import "YZBackground.h"
 #import "YZSettings.h"
+#import "YZStore.h"
 #import "yozora_blur.h"
 #import <CoreGraphics/CoreGraphics.h>
 
@@ -7,7 +8,7 @@ static UIImage *YZCachedPicture;
 static NSInteger YZCachedStamp = -1;
 
 static NSString *YZBackgroundPath(void) {
-    return [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Yozora/home-background.jpg"];
+    return [[YZStore profileDirectory] stringByAppendingPathComponent:@"home-background.jpg"];
 }
 
 @implementation YZBackground

@@ -136,8 +136,8 @@ static NSString *const YZCertificatesRowIdentifier = @"yozora.certificates.row";
     CGFloat textWidth = MAX((CGFloat)0, CGRectGetMinX(_paste.frame) - 8 - 20);
     _titleLabel.frame = CGRectMake(20, YZCertificatesBarHeight / 2 - 20, textWidth, 22);
     _subtitleLabel.frame = CGRectMake(20, YZCertificatesBarHeight / 2 + 2, textWidth, 16);
-    CGSize hint = [_hintLabel.text sizeWithFont:_hintLabel.font constrainedToSize:CGSizeMake(cw - 40, 200) lineBreakMode:YZLineBreakWordWrapping];
-    _hintLabel.frame = CGRectMake(20, YZCertificatesBarHeight, cw - 40, ceil(hint.height));
+    CGFloat hintHeight = ceil([_hintLabel sizeThatFits:CGSizeMake(MAX(cw - 40, (CGFloat)10), 2000)].height);
+    _hintLabel.frame = CGRectMake(20, YZCertificatesBarHeight, cw - 40, hintHeight);
     CGFloat tableTop = CGRectGetMaxY(_hintLabel.frame) + 8;
     _table.frame = CGRectMake(0, tableTop, cw, MAX((CGFloat)0, _card.bounds.size.height - tableTop - 6));
 }

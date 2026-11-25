@@ -961,7 +961,7 @@ static void testTrimUnused()
     assert(painted() > settledCount);
 }
 
-// a page that jumps to a place nothing was made for shows coarse one pixel per point tiles at once and crisp
+// a page that jumps to a place nothing was made for shows coarse tiles (three quarters of the scale) at once and crisp
 // ones replace them when the page has been still
 static void testCoarseWhileMoving()
 {
@@ -985,7 +985,7 @@ static void testCoarseWhileMoving()
     const auto& tiles = yozora_scene_layers(jumped)[0];
     bool coarse = false;
     for (unsigned i = 0; i < tiles.tile_count; ++i)
-        coarse = coarse || tiles.tiles[i].scale == 1.0f;
+        coarse = coarse || tiles.tiles[i].scale == 1.5f;
     assert(tiles.tile_count > 0 && coarse);
     // a coarse tile is as big on the screen as a crisp one: width over scale is the size in points
     for (unsigned i = 0; i < tiles.tile_count; ++i)

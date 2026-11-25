@@ -72,7 +72,6 @@ extern NSString *const YZSettingsDidChangeNotification;
 + (void)setBlockThirdPartyCookies:(BOOL)enabled;
 /* pages are asked for fewer animations and run them at 30 frames a second, on by default for phones under a gigabyte */
 + (BOOL)reduceMotion;
-+ (BOOL)crispScrolling;
 /* the soft glow of the accent behind the mascot on the start page and in the preview of the mascots, on until it is turned off */
 /* the picture behind the start page: how much it is blurred, 0 to 100 percent (see yozora_blur_radius), and the stamp of the stored file
    (0 without a file, the time it was stored otherwise: a changed stamp is what makes the screens take the new picture) */
@@ -82,7 +81,6 @@ extern NSString *const YZSettingsDidChangeNotification;
 + (void)noteHomeBackgroundChanged:(BOOL)present;
 + (BOOL)mascotGlow;
 + (void)setMascotGlow:(BOOL)enabled;
-+ (void)setCrispScrolling:(BOOL)enabled;
 + (BOOL)hideBarsOnScroll;
 + (void)setHideBarsOnScroll:(BOOL)enabled;
 + (void)setReduceMotion:(BOOL)enabled;

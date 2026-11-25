@@ -86,14 +86,11 @@ extern "C" void yozora_image_release(yozora_image* image)
         reinterpret_cast<SkImage*>(image)->unref();
 }
 
-// 1 keeps tiles that come into view while the page moves at the screen scale: a slow device then shows the
-// page color where a tile is not ready yet, instead of a half resolution tile that is replaced when the page
-// stops
-static std::atomic<bool> crisp_scrolling { false };
-
-extern "C" void yozora_set_crisp_scrolling(int enabled)
+// the scale of the tiles made while the page moves: three quarters of the screen scale, which costs a little more
+// than half of a crisp tile on a scale 2 screen and is not blurry like one pixel per point. never below 1
+static float coarse_scale_for(float scale)
 {
-    crisp_scrolling.store(enabled != 0);
+    return std::max(1.0f, std::floor(scale * 3.0f + 0.5f) / 4.0f);
 }
 
 namespace Yozora {
@@ -800,25 +797,26 @@ struct Raster::State {
                     unsigned scale_key = static_cast<unsigned>(source.scale * 1024);
                     Key key { layer.id, x, y, scale_key, recorded.version };
                     auto found = cache.find(key);
-                    // the page is moving and this screen tile has no crisp picture yet: a one pixel per point
+                    // the page is moving and this screen tile has no crisp picture yet: a cheaper
                     // tile is made in its place, cheaper by the square of the scale and there in time,
                     // waiting for the crisp one left the place white. a crisp pass follows when the page
                     // stops
                     if (found == cache.end() && coarse && placed && SkRect::Intersects(tile_on_screen, coarse_zone)) {
                         const bool visible = SkRect::Intersects(tile_on_screen, screen);
-                        unsigned low_width = std::ceil(logical_width), low_height = std::ceil(logical_height);
+                        const float low_scale = coarse_scale_for(source.scale);
+                        unsigned low_width = std::ceil(logical_width * low_scale), low_height = std::ceil(logical_height * low_scale);
                         size_t low_charge = std::max(static_cast<size_t>(low_width) * low_height * 4, minimumTileCharge);
                         // a tile that is not on screen yet is only made inside the budget, as every tile beyond the screen
                         if (!visible && low_charge > byte_limit - std::min(pixel_bytes, byte_limit))
                             continue;
-                        Key low_key { layer.id, x, y, 1024u, recorded.version };
+                        Key low_key { layer.id, x, y, static_cast<unsigned>(low_scale * 1024), recorded.version };
                         auto low = cache.find(low_key);
                         if (low != cache.end()) {
                             low->second.used = ++sequence;
                             SkPixmap low_pixels;
                             if (low->second.image && low->second.image->peekPixels(&low_pixels)) {
                                 result->tile_views[i].push_back({ static_cast<const uint8_t*>(low_pixels.addr()), low_pixels.rowBytes(), low_width, low_height,
-                                    static_cast<float>(x * tileWidth), static_cast<float>(y * tileHeight), 1.0f, reinterpret_cast<yozora_image*>(low->second.image.get()) });
+                                    static_cast<float>(x * tileWidth), static_cast<float>(y * tileHeight), low_scale, reinterpret_cast<yozora_image*>(low->second.image.get()) });
                                 result->images.push_back(low->second.image);
                                 pixel_bytes += low_charge;
                                 // only tiles on screen ask for the crisp pass that follows, the ones ahead wait until they come into view
@@ -831,7 +829,7 @@ struct Raster::State {
                         }
                         auto low_job = std::make_shared<TileJob>();
                         low_job->picture = recorded.picture;
-                        low_job->scale = 1.0f;
+                        low_job->scale = low_scale;
                         low_job->x = x;
                         low_job->y = y;
                         low_job->width = low_width;
@@ -1144,7 +1142,7 @@ struct Raster::State {
             bool viewport_pass = !flat && state.needsViewportPass(*scene, scroll);
             // the page moved within the last moments: tiles of the screen that are missing are made coarse
             bool moving = state.last_scroll_move != Clock::time_point() && Clock::now() - state.last_scroll_move < std::chrono::milliseconds(150);
-            bool coarse = !flat && moving && scene->scale > 1.01f && !crisp_scrolling.load();
+            bool coarse = !flat && moving && scene->scale > 1.01f;
             state.requested = false;
             // this pass is the refinement that was waited for
             if (state.refine_pending && Clock::now() >= state.refine_at)

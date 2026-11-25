@@ -78,9 +78,6 @@ typedef struct {
 void yozora_set_options(const yozora_options *options);
 /* 1 paints tiles at one pixel for each point, the default keeps the screen scale while loading and scrolling */
 void yozora_set_economy_raster(int enabled);
-/* 1 paints the tiles that come into view while the page moves at the screen scale, 0 (the default) paints a
-   one pixel per point tile first and the crisp one when the page has been still for a moment. any thread */
-void yozora_set_crisp_scrolling(int enabled);
 /* 1 while tiles are out of date or at a lower scale than the page wants, so the picture is not final yet */
 int yozora_core_painting(yozora_core *core);
 /* the headless snapshot api flattens layer scenes into horizontal tiles; the native interface takes scenes directly */

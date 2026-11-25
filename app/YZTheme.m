@@ -660,7 +660,7 @@ static BOOL YZDrawFlatGlyph(YZIcon icon, CGFloat s, UIColor *color) {
 
 // the tab counter is a rounded square with the number inside. the tab tray glyph has a bar under the frame and reads as a monitor
 + (UIImage *)tabsIconWithCount:(NSUInteger)count size:(CGFloat)size color:(UIColor *)color {
-    NSString *text = count > 99 ? @":)" : [NSString stringWithFormat:@"%lu", (unsigned long)count];
+    NSString *text = count >= 10 ? @":D" : [NSString stringWithFormat:@"%lu", (unsigned long)count];
     UIFont *font = [UIFont boldSystemFontOfSize:size * (count > 9 ? 0.3f : 0.38f)];
     CGFloat line = size * 2 / 24, edge = size * 4 / 24;
     UIGraphicsBeginImageContextWithOptions(CGSizeMake(size, size), NO, 0);

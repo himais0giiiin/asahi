@@ -202,12 +202,10 @@ static UIImage *YZThumbnailFromView(UIView *view) {
     }
 }
 
-// the keys of the bars in the order they stand. the flat design has the share key where the others have the star (the star lives in the
-// menu there), the tabs and the menu close the row in every design
+// the keys of the bars in the order they stand, the same in every design: pages are no longer kept as bookmarks, so the share key stands
+// where the star was
 - (NSArray *)barButtons {
-    if ([YZTheme isFlat])
-        return [NSArray arrayWithObjects:_backButton, _forwardButton, _shareButton, _tabsButton, _menuButton, nil];
-    return [NSArray arrayWithObjects:_backButton, _forwardButton, _starButton, _tabsButton, _menuButton, nil];
+    return [NSArray arrayWithObjects:_backButton, _forwardButton, _shareButton, _tabsButton, _menuButton, nil];
 }
 
 - (void)styleBarButton:(UIButton *)button icon:(YZIcon)icon {
@@ -350,11 +348,10 @@ static UIImage *YZThumbnailFromView(UIView *view) {
     [self.view addSubview:_bottomBar];
     _backButton = [[self barButtonWithIcon:YZIconBack action:@selector(backPressed) label:YZT(@"Назад")] retain];
     _forwardButton = [[self barButtonWithIcon:YZIconForward action:@selector(forwardPressed) label:YZT(@"Вперёд")] retain];
-    _starButton = [[self barButtonWithIcon:YZIconStar action:@selector(starPressed) label:YZT(@"Закладка")] retain];
     _shareButton = [[self barButtonWithIcon:YZIconShare action:@selector(sharePressed) label:YZT(@"Поделиться")] retain];
     _tabsButton = [[self barButtonWithIcon:YZIconTabs action:@selector(tabsPressed) label:YZT(@"Вкладки")] retain];
     _menuButton = [[self barButtonWithIcon:YZIconMenu action:@selector(menuPressed) label:YZT(@"Меню")] retain];
-    for (UIButton *button in [NSArray arrayWithObjects:_backButton, _forwardButton, _starButton, _shareButton, _tabsButton, _menuButton, nil])
+    for (UIButton *button in [NSArray arrayWithObjects:_backButton, _forwardButton, _shareButton, _tabsButton, _menuButton, nil])
         [_bottomBar addSubview:button];
 
     _tabsView = [[YZTabsView alloc] initWithFrame:CGRectZero];
@@ -1532,8 +1529,6 @@ static const CGFloat YZTabStripHeight = 44;
     // the buttons live in the bottom bar of a phone and in the toolbar of a wide screen
     UIView *host = wide ? _topBar : _bottomBar;
     NSArray *buttons = [self barButtons];
-    for (UIButton *button in [NSArray arrayWithObjects:_starButton, _shareButton, nil])
-        button.hidden = ![buttons containsObject:button];
     for (UIButton *button in buttons) {
         if (button.superview != host)
             [host addSubview:button];
@@ -1544,7 +1539,7 @@ static const CGFloat YZTabStripHeight = 44;
     CGFloat fieldHeight = [YZTheme isFlat] ? MIN(bar - 14, (CGFloat)30) : bar - 16;
     CGFloat fieldLeft = insets.left + 12, fieldRight = insets.right + 12;
     if (wide) {
-        // back and forward left, bookmark, tabs and menu right, cancel takes the right while the address is
+        // back and forward left, share, tabs and menu right, cancel takes the right while the address is
         // edited
         CGFloat slot = 48;
         for (NSUInteger i = 0; i < [buttons count]; ++i) {
@@ -1708,7 +1703,6 @@ static const CGFloat YZTabStripHeight = 44;
     BOOL back = _core && yozora_core_can_go_back(_core);
     BOOL forward = _core && yozora_core_can_go_forward(_core);
     BOOL secure = _core && yozora_core_is_secure(_core);
-    BOOL bookmarked = !blank && [_store isBookmarked:url];
     int progress = (_core && state == YOZORA_LOAD_LOADING) ? (int)(yozora_core_progress(_core) * 100) : 0;
 
     if (forced || !YZSameString(url, _shownURL)) {
@@ -1756,14 +1750,7 @@ static const CGFloat YZTabStripHeight = 44;
         [self setBarButton:_backButton enabled:back];
         [self setBarButton:_forwardButton enabled:forward];
     }
-    if (forced || bookmarked != _shownBookmarked || blankChanged) {
-        _shownBookmarked = bookmarked;
-        UIImage *star = [YZTheme chromeIcon:(bookmarked ? YZIconStarFilled : YZIconStar) size:24
-                                color:bookmarked ? [YZTheme barHighlightColor] : [YZTheme barInkColor]];
-        if ([YZTheme isClassic])
-            star = [YZClassic stampedImage:star];
-        [_starButton setImage:star forState:UIControlStateNormal];
-        [self setBarButton:_starButton enabled:!blank];
+    if (forced || blankChanged) {
         [self setBarButton:_shareButton enabled:!blank && !_popupMode && [self canShare]];
     }
     [self refreshTabStrip];
@@ -2049,7 +2036,6 @@ static const CGFloat YZTabStripHeight = 44;
         link.frameInterval = [[self currentTab] isBlank] && state == YOZORA_LOAD_IDLE ? 6 : 2;
     if (_popupMode) {
         _menuButton.enabled = NO;
-        _starButton.enabled = NO;
         _shareButton.enabled = NO;
     }
     if (visited)
@@ -2195,23 +2181,6 @@ static const CGFloat YZTabStripHeight = 44;
     [url release];
 }
 
-- (void)starPressed {
-    NSString *url = [self currentURL];
-    if (![url length] || !_store)
-        return;
-    BOOL ok = [_store isBookmarked:url] ? [_store removeBookmarkWithURL:url]
-                                        : [_store addBookmarkWithURL:url title:[[self currentTab] title]];
-    if (!ok)
-        [self showError:YZT(@"Закладку не удалось сохранить")];
-    else {
-        // the star wobbles when a bookmark is made or removed
-        [self updateChromeForced:YES];
-        [YZTheme animateFeedbackOfView:_starButton.imageView];
-        return;
-    }
-    [self updateChromeForced:YES];
-}
-
 - (void)sharePressed {
     [self shareText:[self currentURL] fromRect:_shareButton.bounds inView:_shareButton];
 }
@@ -2271,11 +2240,6 @@ static const CGFloat YZTabStripHeight = 44;
         add(YZMenuHistory, YZT(@"История"), YZIconHistory);
     add(YZMenuDownloads, YZT(@"Загрузки"), YZIconDownload);
     if (!blank) {
-        // the flat bar has no star, the page is kept and dropped from the menu
-        if ([YZTheme isFlat]) {
-            BOOL bookmarked = [_store isBookmarked:[self currentURL]];
-            add(YZMenuBookmarkPage, bookmarked ? YZT(@"Убрать из закладок") : YZT(@"Добавить в закладки"), bookmarked ? YZIconStarFilled : YZIconStar);
-        }
         add(YZMenuCopyAddress, YZT(@"Скопировать адрес"), YZIconCopy);
         if ([self canShare])
             add(YZMenuShare, YZT(@"Поделиться"), YZIconShare);
@@ -2370,9 +2334,6 @@ static const CGFloat YZTabStripHeight = 44;
     case YZMenuShare:
         [self shareText:[self currentURL] fromRect:_menuButton.bounds inView:_menuButton];
         break;
-    case YZMenuBookmarkPage:
-        [self starPressed];
-        break;
     case YZMenuFindInPage:
         [self showFindBar];
         break;
@@ -2424,8 +2385,8 @@ static const CGFloat YZTabStripHeight = 44;
     _input.keyboardAppearance = [YZTheme isDark] ? UIKeyboardAppearanceAlert : UIKeyboardAppearanceDefault;
     [_cancelButton setTitle:YZT(@"Отмена") forState:UIControlStateNormal];
     [self styleCancelButton];
-    NSArray *buttons = [NSArray arrayWithObjects:_backButton, _forwardButton, _starButton, _shareButton, _tabsButton, _menuButton, nil];
-    NSArray *labels = [NSArray arrayWithObjects:@"Назад", @"Вперёд", @"Закладка", @"Поделиться", @"Вкладки", @"Меню", nil];
+    NSArray *buttons = [NSArray arrayWithObjects:_backButton, _forwardButton, _shareButton, _tabsButton, _menuButton, nil];
+    NSArray *labels = [NSArray arrayWithObjects:@"Назад", @"Вперёд", @"Поделиться", @"Вкладки", @"Меню", nil];
     for (NSUInteger i = 0; i < [buttons count]; ++i) {
         UIButton *button = [buttons objectAtIndex:i];
         [self styleBarButton:button icon:(YZIcon)button.tag];
@@ -3249,7 +3210,6 @@ typedef enum {
     [_bottomBar release];
     [_backButton release];
     [_forwardButton release];
-    [_starButton release];
     [_shareButton release];
     [_tabsButton release];
     [_menuButton release];

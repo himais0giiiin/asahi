@@ -127,7 +127,7 @@ static CGFloat YZPreviewFieldHeight(CGFloat bar) {
     _address.textColor = [YZTheme fieldHintColor];
     // the address field of the browser shows the host of the page, the start page has none: the field is as it is on a blank tab
     _address.text = YZT(@"Поиск или адрес");
-    int keys[5] = { YZIconBack, YZIconForward, flat ? YZIconShare : YZIconStar, YZIconTabs, YZIconMenu };
+    int keys[5] = { YZIconBack, YZIconForward, YZIconShare, YZIconTabs, YZIconMenu };
     for (int i = 0; i < 5; ++i) {
         UIImage *glyph = keys[i] == YZIconTabs ? [YZTheme barTabsIconWithCount:1 size:24] : [YZTheme barIcon:(YZIcon)keys[i] size:24 disabled:NO];
         [[_toolIcons objectAtIndex:(NSUInteger)i] setImage:glyph];

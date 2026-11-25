@@ -12,7 +12,7 @@ typedef enum {
     YZMenuShare,
     YZMenuTranslate,
     YZMenuAdblock,
-    YZMenuBookmarkPage
+    YZMenuShortcut
 } YZMenuItem;
 
 @protocol YZMenuViewDelegate;
